@@ -10,8 +10,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
-/* Layout: photo on a neutral gray surround (so color judgments stay honest), three steps on the right:
-   switches for fixes, pictures for styles, pictures for crops. The film strip sits under the photo. */
+/* Layout: photo on a neutral gray surround (so color judgments stay honest); on the right the scope,
+   then three tabs: what was measured and fixed, color, crop. The film strip sits under the photo. */
 :root {
   --bg: #e6e9e9;
   --panel: #f4f6f6;
@@ -23,6 +23,9 @@
   --accent-fg: #ffffff;
   --stage: #c4c4c4;
   --scope: #17191a;
+  --ok: #2a7a4b;
+  --tip: #9a5b00;
+  --warn: #b23a2c;
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --sans: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -31,14 +34,14 @@
   :root:not([data-theme="light"]) {
     --bg: #222526; --panel: #2a2e2f; --raise: #33383a; --line: #3f4648;
     --fg: #e9eded; --muted: #9ba6a8; --accent: #45c6c1; --accent-fg: #062b2b;
-    --stage: #161718;
+    --stage: #161718; --ok: #6fd09a; --tip: #f0b450; --warn: #f27f70;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #222526; --panel: #2a2e2f; --raise: #33383a; --line: #3f4648;
   --fg: #e9eded; --muted: #9ba6a8; --accent: #45c6c1; --accent-fg: #062b2b;
-  --stage: #161718;
+  --stage: #161718; --ok: #6fd09a; --tip: #f0b450; --warn: #f27f70;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -54,7 +57,7 @@ button, input { font: inherit; color: inherit; }
 .app {
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 352px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas: "bar bar" "stage side" "strip side";
   column-gap: 14px;
@@ -64,11 +67,13 @@ button, input { font: inherit; color: inherit; }
 }
 
 /* ---- top bar ---- */
-.bar { grid-area: bar; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding-block: 10px; }
+.bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-block: 10px; }
 .brand { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .brand .wm { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 24px; letter-spacing: -0.01em; line-height: 1; }
 .brand .cn { font-size: 14px; font-weight: 600; letter-spacing: 0.14em; color: var(--muted); }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.meta { flex: 1 1 160px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta b { color: var(--fg); font-weight: 500; font-family: var(--sans); font-size: 13px; margin-right: 10px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 
 .btn {
   border: 1px solid var(--line); background: var(--raise); border-radius: 6px;
@@ -78,6 +83,7 @@ button, input { font: inherit; color: inherit; }
 .btn:hover { border-color: var(--muted); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.btn.sm { padding: 3px 10px; font-size: 13px; }
 .icon { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
 .icon:hover { border-color: var(--muted); }
 .icon svg { width: 17px; height: 17px; display: block; }
@@ -105,23 +111,41 @@ button, input { font: inherit; color: inherit; }
 
 /* ---- side panel ---- */
 .side { grid-area: side; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.scope { background: var(--scope); padding: 8px 10px 6px; }
+.scope canvas { display: block; width: 100%; height: 76px; }
+.scope .legend { display: flex; justify-content: space-between; color: #9ba6a8; margin-top: 3px; min-height: 18px; }
+.scope .legend .hot { color: #f27f70; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
-.tabs button { border: 0; background: transparent; padding: 11px 4px; cursor: pointer; font-weight: 600; font-size: 15px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button { border: 0; background: transparent; padding: 10px 4px; cursor: pointer; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
-.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 18px; }
+.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 20px; display: flex; flex-direction: column; gap: 16px; }
 .group { display: flex; flex-direction: column; gap: 8px; }
+.groups { display: flex; flex-direction: column; gap: 16px; }
 h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+.lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lead strong { font-size: 15px; }
+.foot { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* fixes: one switch each */
-.fixes { display: flex; flex-direction: column; }
-.fix { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 11px 2px; cursor: pointer; text-align: left; font-size: 15px; }
-.fix:first-child { border-top: 1px solid var(--line); }
-.fix i { flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--line); position: relative; }
-.fix i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--raise); box-shadow: 0 0 0 1px var(--line); }
-.fix[aria-checked="true"] i { background: var(--accent); }
-.fix[aria-checked="true"] i::after { left: 18px; box-shadow: none; }
-.fix[aria-checked="false"] span { color: var(--muted); }
-.nofix { margin: 0; padding: 11px 2px; border-block: 1px solid var(--line); color: var(--muted); }
+/* findings: what was measured, and a switch for each fix */
+.findings { display: flex; flex-direction: column; }
+.finding { padding: 10px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; align-items: center; }
+.finding:last-child { border-bottom: 1px solid var(--line); }
+.finding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.finding[data-s="tip"] .dot { background: var(--tip); border-radius: 2px; }
+.finding[data-s="warn"] .dot { background: var(--warn); border-radius: 0; transform: rotate(45deg); }
+.finding .t { font-weight: 600; }
+.finding .t small { font-weight: 400; color: var(--muted); margin-left: 8px; font-size: 12px; }
+.finding[data-s="tip"] .t small { color: var(--tip); }
+.finding[data-s="warn"] .t small { color: var(--warn); }
+.finding .m { grid-column: 2 / 4; margin: 0; color: var(--muted); font-size: 13px; }
+.finding .fix { grid-column: 2 / 4; color: var(--fg); }
+.sw { flex: none; width: 38px; height: 22px; padding: 0; border: 0; border-radius: 11px; background: var(--line); position: relative; cursor: pointer; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--raise); box-shadow: 0 0 0 1px var(--line); }
+.sw[aria-checked="true"] { background: var(--accent); }
+.sw[aria-checked="true"]::after { left: 18px; box-shadow: none; }
+.swatches { display: flex; height: 24px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.swatches span { min-width: 6px; }
 
 /* sliders */
 .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 8px; }
@@ -131,29 +155,33 @@ h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color
 input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; margin: 0; background: transparent; cursor: pointer; --a: 50%; --b: 50%; --trk: linear-gradient(to right, var(--line) 0, var(--line) var(--a), var(--accent) var(--a), var(--accent) var(--b), var(--line) var(--b), var(--line) 100%); }
 input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: var(--trk); }
 input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--trk); }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
-input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
+input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
 input.t-temp { --trk: linear-gradient(to right, #4f8fe6, #b9bcbc, #e8a53a); }
 input.t-tint { --trk: linear-gradient(to right, #46b76a, #b9bcbc, #cf5fc0); }
 input.t-hue { --trk: linear-gradient(to right, #e05555, #d8c043, #4fbf6a, #43c4cf, #4f6fe6, #c455d8, #e05555); }
 input.t-aqua { --trk: linear-gradient(to right, #5a6fe0, #3f9fe0, #2fc4b8); }
-
-details summary { cursor: pointer; font-weight: 600; color: var(--muted); padding: 4px 0; }
-details[open] summary { color: var(--fg); margin-bottom: 12px; }
-details .groups { display: flex; flex-direction: column; gap: 16px; }
-#hist { display: block; width: 100%; height: 72px; border-radius: 4px; background: var(--scope); }
-.foot { display: flex; flex-wrap: wrap; gap: 8px; }
+details summary { cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+details .group { margin-top: 8px; }
 
 /* pictures to tap: styles and crops */
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
-.tile { border: 0; padding: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: stretch; text-align: center; position: relative; }
+.tile { border: 0; padding: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; gap: 3px; align-items: stretch; text-align: center; position: relative; }
 .tile .pic { width: 100%; aspect-ratio: 4 / 3; display: grid; place-items: center; border-radius: 5px; background: var(--stage); outline: 2px solid transparent; outline-offset: 1px; overflow: hidden; }
-.tile canvas { max-width: 100%; max-height: 100%; display: block; }
+.tile canvas { max-width: 100%; display: block; }
 .tile.fill canvas { width: 100%; height: 100%; }
 .tile[aria-pressed="true"] .pic { outline-color: var(--accent); }
-.tile span { font-size: 13px; }
+.tile span { font-size: 12px; }
 .tile[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
-.tile .star { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-size: 11px; line-height: 18px; text-align: center; }
+.tile .star { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-size: 11px; font-style: normal; line-height: 18px; text-align: center; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 3px 11px; cursor: pointer; font-size: 13px; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.meters { display: grid; grid-template-columns: auto minmax(0, 1fr) 3ch; gap: 6px 10px; align-items: center; font-size: 13px; }
+.meter { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.meters .num { text-align: right; color: var(--muted); }
 
 /* export fallback sheet */
 .sheet { position: fixed; inset: 0; z-index: 30; background: color-mix(in srgb, var(--scope) 88%, transparent); display: grid; place-items: center; padding: 20px; }
@@ -167,6 +195,7 @@ details .groups { display: flex; flex-direction: column; gap: 16px; }
   .app { display: flex; flex-direction: column; height: auto; }
   .bar { padding-block: 8px; }
   .brand .wm { font-size: 21px; }
+  .meta { flex-basis: 100%; order: 3; }
   .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; height: 44vh; height: 44svh; min-height: 230px; flex: none; box-shadow: 0 0 0 8px var(--bg); }
   .strip { flex-wrap: wrap; }
   .privacy { flex-basis: 100%; }
@@ -175,7 +204,7 @@ details .groups { display: flex; flex-direction: column; gap: 16px; }
   input[type="range"] { height: 32px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .btn, .icon, .thumb, .tile .pic, .fix i, .fix i::after { transition: border-color 0.12s, outline-color 0.12s, background-color 0.12s, left 0.12s; }
+  .btn, .icon, .chip, .thumb, .tile .pic, .sw, .sw::after { transition: border-color 0.12s, outline-color 0.12s, background-color 0.12s, left 0.12s; }
 }
 </style>
 </head>
@@ -184,6 +213,7 @@ details .groups { display: flex; flex-direction: column; gap: 16px; }
 <div class="app" id="app">
   <header class="bar">
     <div class="brand"><span class="wm">Second Look</span><span class="cn" id="brandCn">第二眼</span></div>
+    <div class="meta num" id="meta"></div>
     <div class="actions">
       <button class="icon" id="btnLang" data-i18n-label="a.lang">EN</button>
       <button class="icon" id="btnTheme" data-i18n-label="a.theme"></button>
@@ -194,7 +224,7 @@ details .groups { display: flex; flex-direction: column; gap: 16px; }
 
   <main class="stage" id="stage">
     <canvas id="view" data-i18n-label="a.preview"></canvas>
-    <button class="hold" id="btnCompare" data-i18n="compare">Original</button>
+    <button class="hold" id="btnCompare" data-i18n="compare">Hold for original</button>
     <div class="drop" id="drop" data-i18n="drop" hidden>Drop to add</div>
     <div class="toast" id="toast" role="status" hidden></div>
   </main>
@@ -208,33 +238,46 @@ details .groups { display: flex; flex-direction: column; gap: 16px; }
   </section>
 
   <aside class="side">
+    <div class="scope">
+      <canvas id="hist" width="640" height="152" data-i18n-label="a.hist"></canvas>
+      <div class="legend num"><span id="clipLo"></span><span id="clipHi"></span></div>
+    </div>
     <div class="tabs" role="tablist">
-      <button role="tab" id="tab-fix" aria-selected="true" aria-controls="pane-fix" data-i18n="tab.fix">Fix</button>
-      <button role="tab" id="tab-style" aria-selected="false" aria-controls="pane-style" data-i18n="tab.style">Style</button>
+      <button role="tab" id="tab-diag" aria-selected="true" aria-controls="pane-diag" data-i18n="tab.diag">Diagnose</button>
+      <button role="tab" id="tab-color" aria-selected="false" aria-controls="pane-color" data-i18n="tab.color">Color</button>
       <button role="tab" id="tab-crop" aria-selected="false" aria-controls="pane-crop" data-i18n="tab.crop">Crop</button>
     </div>
 
-    <div class="pane" id="pane-fix" role="tabpanel" aria-labelledby="tab-fix">
-      <div class="fixes" id="fixes"></div>
-      <div class="group" id="basic"></div>
-      <details id="more">
-        <summary data-i18n="more">More controls</summary>
-        <div class="groups"><canvas id="hist" width="640" height="144" data-i18n-label="a.hist"></canvas><div class="groups" id="sliders"></div></div>
-      </details>
-      <div class="foot"><button class="btn" id="btnReset" data-i18n="reset">Reset</button></div>
+    <div class="pane" id="pane-diag" role="tabpanel" aria-labelledby="tab-diag">
+      <div class="lead"><strong id="diagLead"></strong><button class="btn sm" id="btnReset" data-i18n="reset">Reset</button></div>
+      <div class="findings" id="findings"></div>
+      <div class="group"><h3 data-i18n="h.palette">Palette</h3><div class="swatches" id="swatches"></div><p class="hint" id="paletteNote"></p></div>
     </div>
 
-    <div class="pane" id="pane-style" role="tabpanel" aria-labelledby="tab-style" hidden>
-      <div class="tiles" id="looks"></div>
-      <div class="row"><label for="s-lookAmt" data-i18n="strength">Strength</label><span></span>
-        <input type="range" id="s-lookAmt" min="0" max="100" step="1" value="70"></div>
-      <div class="foot"><button class="btn" id="btnSync" data-i18n="applyAll" hidden>Apply to all photos</button></div>
+    <div class="pane" id="pane-color" role="tabpanel" aria-labelledby="tab-color" hidden>
+      <div class="group">
+        <h3 data-i18n="h.style">Style</h3>
+        <div class="tiles" id="looks"></div>
+        <div class="row"><label for="s-lookAmt" data-i18n="strength">Strength</label><output id="o-lookAmt" class="num">70</output>
+          <input type="range" id="s-lookAmt" min="0" max="100" step="1" value="70"></div>
+      </div>
+      <div class="groups" id="sliders"></div>
+      <div class="foot">
+        <button class="btn sm" id="btnResetColor" data-i18n="resetColor">Reset color</button>
+        <button class="btn sm" id="btnSync" data-i18n="applyAll" hidden>Apply to all photos</button>
+      </div>
     </div>
 
     <div class="pane" id="pane-crop" role="tabpanel" aria-labelledby="tab-crop" hidden>
-      <div class="tiles" id="crops"></div>
-      <div class="row"><label for="s-angle" data-i18n="rotate">Rotate</label><output id="o-angle" class="num">0.0°</output>
-        <input type="range" id="s-angle" min="-15" max="15" step="0.1" value="0"></div>
+      <div class="group"><h3 data-i18n="h.ratio">Shape</h3><div class="chips" id="aspects"></div></div>
+      <div class="group">
+        <div class="row"><label for="s-angle" data-i18n="s.rotate">Straighten</label><output id="o-angle" class="num">0.0°</output>
+          <input type="range" id="s-angle" min="-15" max="15" step="0.1" value="0"></div>
+        <div class="foot"><button class="btn sm" id="btnLevel" data-i18n="autoLevel">Level the horizon</button><button class="btn sm" id="btnResetCrop" data-i18n="resetCrop">Reset crop</button></div>
+      </div>
+      <div class="group"><h3 data-i18n="h.guides">Guides</h3><div class="chips" id="overlays"></div></div>
+      <div class="group"><h3 data-i18n="h.crops">Suggested crops</h3><div class="tiles" id="crops"></div><p class="hint" data-i18n="hint.subject">Tap the photo to mark the subject.</p></div>
+      <div class="group"><h3 data-i18n="h.now">This framing</h3><div class="meters" id="meters"></div></div>
     </div>
   </aside>
 </div>
@@ -272,48 +315,86 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
 /* ================= language ================= */
 const STR = {
   zh: {
-    'tab.fix': '修正', 'tab.style': '风格', 'tab.crop': '裁剪',
+    'tab.diag': '诊断', 'tab.color': '调色', 'tab.crop': '裁剪',
     save: '保存', saveAll: '全部保存', busy: '处理中 {p}%', busyN: '处理中 {i} / {n}',
-    add: '添加照片', privacy: '照片不会上传', sample: '示例', compare: '按住看原图', drop: '松手添加',
-    more: '更多调节', reset: '重置', strength: '强度', applyAll: '用到全部照片', rotate: '旋转', close: '关闭',
-    nofix: '这张不用修',
-    'fx.brighten': '提亮', 'fx.darken': '压暗', 'fx.haze': '去灰雾', 'fx.highlights': '找回亮部细节', 'fx.shadows': '提亮暗部',
-    'fx.castBlue': '校正偏蓝', 'fx.castYellow': '校正偏黄', 'fx.castGreen': '校正偏绿', 'fx.castMagenta': '校正偏洋红',
-    'fx.richer': '颜色加浓', 'fx.calmer': '颜色收一点', 'fx.level': '摆正',
-    's.exposure': '亮度', 's.contrast': '对比', 's.temp': '冷暖', 's.vibrance': '鲜艳',
-    's.highlights': '高光', 's.shadows': '阴影', 's.whites': '白场', 's.blacks': '黑场', 's.tint': '色调', 's.saturation': '饱和度',
-    's.aquaSat': '饱和', 's.aquaHue': '色相', 's.aquaLum': '明度', 's.greenSat': '绿色', 's.warmSat': '暖色',
-    's.clarity': '清晰度', 's.fade': '褪色', 's.vignette': '暗角', 's.shHue': '暗部色相', 's.shAmt': '暗部强度', 's.hiHue': '亮部色相', 's.hiAmt': '亮部强度',
-    'g.light': '光线', 'g.color': '色彩', 'g.blues': '天空与水', 'g.sat': '单独加浓', 'g.texture': '质感', 'g.split': '分离色调',
-    'lk.none': '自然', 'lk.clear': '清透', 'lk.tealorange': '电影感', 'lk.golden': '暖阳', 'lk.deepblue': '深蓝', 'lk.film': '怀旧', 'lk.airy': '清新', 'lk.jungle': '森林', 'lk.bw': '黑白',
-    'cr.full': '不裁', 'cr.tight': '收紧',
-    'a.lang': 'Switch to English', 'a.theme': '切换日间/夜间', 'a.preview': '照片预览', 'a.hist': '直方图',
+    add: '添加照片', privacy: '照片不会上传', sample: '示例', sampleName: '示例照片', compare: '按住看原图', drop: '松手添加',
+    reset: '重置这张', resetColor: '重置调色', resetCrop: '重置裁剪', autoLevel: '自动摆正', strength: '风格强度', applyAll: '把调色用到全部照片', close: '关闭', go: '去看看',
+    'h.palette': '画面主色', 'h.style': '风格', 'h.ratio': '比例', 'h.guides': '构图参考线', 'h.crops': '建议裁剪', 'h.now': '当前构图',
+    'hint.subject': '黄色虚线框是算出来的主体，认错了就点一下照片上真正的主体。',
+    'lead.n': '已自动修正 {n} 处', 'lead.none': '没有自动修正',
+    'tag.fixed': '已修正', 'tag.off': '未采用', 'tag.ok': '没问题', 'tag.tip': '建议', 'tag.on': '已套用',
+    'f.exposure': '曝光', 'f.levels': '层次', 'f.highlights': '高光', 'f.shadows': '阴影', 'f.wb': '白平衡', 'f.color': '色彩', 'f.horizon': '地平线', 'f.comp': '构图', 'f.style': '风格',
+    'm.dark': '整体偏暗，中位亮度 {m}，舒适区约 40–60%。', 'm.bright': '整体偏亮，中位亮度 {m}，舒适区约 40–60%。',
+    'm.highkey': '没有过曝，雾、雪、白墙这类亮调多半是有意的，所以默认不压暗。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
+    'm.expOk': '中位亮度 {m}，不用动。',
+    'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。',
+    'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以默认不压。',
+    'm.shadows': '暗部占 {f}，提一点看清细节。', 'm.backlit2': '逆光，把暗处提亮。',
+    'm.cast': '最亮的区域本该是白色，现在{dir}，按七成校正。', 'm.warmMood': '偏色不重，轻微的暖调常常是氛围，所以默认不改。',
+    'd.castBlue': '偏蓝', 'd.castYellow': '偏黄', 'd.castGreen': '偏绿', 'd.castMagenta': '偏洋红',
+    'm.sunset': '暖色占主导，像日出日落，保留暖调。', 'm.wbOk': '亮部接近中性，没有明显色偏。', 'm.wbNone': '画面里找不到白色参照，无法判断。',
+    'm.pale': '颜色偏淡，平均饱和度 {s}。', 'm.heavy': '颜色已经很浓，平均饱和度 {s}，略收一点。', 'm.colorOk': '平均饱和度 {s}，浓淡合适。',
+    'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以默认不转。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
+    'm.midHorizon': '地平线压在画面中线，上下各一半容易显得呆板，试试放到三分线。', 'm.score': '按规则打 {n} 分。',
+    'm.look.sunset': '暖色占 {w}，是日落气氛', 'm.look.duo': '蓝青占 {a}、暖色占 {w}，是一对互补色', 'm.look.aqua': '天空和水占了 {a} 的色彩', 'm.look.green': '绿色占了 {g} 的色彩', 'm.look.mono': '画面几乎没有颜色', 'm.look.mixed': '色彩比较分散',
+    'm.try': '，试试「{name}」。',
+    'pal.note': '蓝青 {a} · 绿 {g} · 暖色 {w}',
+    's.exposure': '曝光', 's.contrast': '对比度', 's.highlights': '高光', 's.shadows': '阴影', 's.whites': '白色', 's.blacks': '黑色',
+    's.temp': '色温', 's.tint': '色调', 's.vibrance': '自然饱和度', 's.saturation': '饱和度',
+    's.aquaSat': '饱和', 's.aquaHue': '色相', 's.aquaLum': '明度', 's.greenSat': '绿植饱和', 's.warmSat': '暖色饱和',
+    's.clarity': '清晰度', 's.fade': '褪色', 's.vignette': '暗角', 's.shHue': '暗部色相', 's.shAmt': '暗部强度', 's.hiHue': '亮部色相', 's.hiAmt': '亮部强度', 's.rotate': '拉直',
+    'g.light': '光线', 'g.color': '色彩', 'g.blues': '天空与水', 'g.sat': '植被与暖色', 'g.texture': '质感', 'g.split': '分离色调',
+    'lk.none': '自然', 'lk.clear': '清透', 'lk.tealorange': '青橙', 'lk.golden': '金色时刻', 'lk.deepblue': '深蓝', 'lk.film': '胶片', 'lk.airy': '清新', 'lk.jungle': '森林', 'lk.bw': '黑白',
+    'cr.full': '不裁', 'cr.tight': '收紧', 'r.free': '自由', 'r.orig': '原比例',
+    'ov.none': '无', 'ov.thirds': '三分法', 'ov.phi': '黄金分割', 'ov.diag': '对角线', 'ov.spiral': '黄金螺旋', 'ov.center': '中心十字',
+    'mt.all': '综合', 'mt.subject': '主体位置', 'mt.keep': '内容保留', 'mt.clean': '边缘干净', 'mt.horizon': '地平线位置',
+    'hist.lo': '暗部', 'hist.hi': '亮部', 'hist.loClip': '暗部死黑 {p}', 'hist.hiClip': '亮部溢出 {p}',
+    'a.lang': 'Switch to English', 'a.theme': '切换日间/夜间', 'a.preview': '照片预览', 'a.hist': 'RGB 直方图',
     'sheet.hint': '长按或右键图片，选择存储。',
     't.reading': '正在读取 {i} / {n}', 't.added': '已添加 {n} 张', 't.heic': '{n} 张没能打开。这个浏览器不支持 HEIC，请先转成 JPEG。', 't.bad': '{n} 张没能打开',
     't.saved': '已保存', 't.cancel': '已取消', 't.wait': '稍等再试', 't.fail': '保存失败，照片可能太大', 't.zip': '这个窗口不能保存压缩包，请逐张保存', 't.partial': '{n} 张处理失败，其余已打包',
-    't.synced': '已用到另外 {n} 张', 't.read': '这张照片读取失败',
+    't.synced': '已用到另外 {n} 张', 't.read': '这张照片读取失败', 't.noHorizon': '没找到明显的水平线，请手动拖动', 't.level': '已经是平的',
   },
   en: {
-    'tab.fix': 'Fix', 'tab.style': 'Style', 'tab.crop': 'Crop',
+    'tab.diag': 'Diagnose', 'tab.color': 'Color', 'tab.crop': 'Crop',
     save: 'Save', saveAll: 'Save all', busy: 'Working {p}%', busyN: 'Working {i} / {n}',
-    add: 'Add photos', privacy: 'Photos stay on this device', sample: 'Sample', compare: 'Hold for original', drop: 'Drop to add',
-    more: 'More controls', reset: 'Reset', strength: 'Strength', applyAll: 'Apply to all photos', rotate: 'Rotate', close: 'Close',
-    nofix: 'Nothing to fix',
-    'fx.brighten': 'Brighten', 'fx.darken': 'Darken', 'fx.haze': 'Clear haze', 'fx.highlights': 'Recover highlights', 'fx.shadows': 'Lift shadows',
-    'fx.castBlue': 'Fix blue cast', 'fx.castYellow': 'Fix yellow cast', 'fx.castGreen': 'Fix green cast', 'fx.castMagenta': 'Fix magenta cast',
-    'fx.richer': 'Richer color', 'fx.calmer': 'Calmer color', 'fx.level': 'Straighten',
-    's.exposure': 'Brightness', 's.contrast': 'Contrast', 's.temp': 'Warmth', 's.vibrance': 'Vibrance',
-    's.highlights': 'Highlights', 's.shadows': 'Shadows', 's.whites': 'Whites', 's.blacks': 'Blacks', 's.tint': 'Tint', 's.saturation': 'Saturation',
+    add: 'Add photos', privacy: 'Photos stay on this device', sample: 'Sample', sampleName: 'Sample photo', compare: 'Hold for original', drop: 'Drop to add',
+    reset: 'Reset photo', resetColor: 'Reset color', resetCrop: 'Reset crop', autoLevel: 'Level the horizon', strength: 'Style strength', applyAll: 'Apply color to all photos', close: 'Close', go: 'Open crop',
+    'h.palette': 'Palette', 'h.style': 'Style', 'h.ratio': 'Shape', 'h.guides': 'Composition guides', 'h.crops': 'Suggested crops', 'h.now': 'This framing',
+    'hint.subject': 'The dashed yellow box is the detected subject. If it is wrong, tap the real subject on the photo.',
+    'lead.n': '{n} fixes applied', 'lead.none': 'No automatic fixes',
+    'tag.fixed': 'fixed', 'tag.off': 'not applied', 'tag.ok': 'fine', 'tag.tip': 'suggestion', 'tag.on': 'applied',
+    'f.exposure': 'Exposure', 'f.levels': 'Tonal range', 'f.highlights': 'Highlights', 'f.shadows': 'Shadows', 'f.wb': 'White balance', 'f.color': 'Color', 'f.horizon': 'Horizon', 'f.comp': 'Composition', 'f.style': 'Style',
+    'm.dark': 'Dark overall: median brightness {m}; about 40–60% is comfortable.', 'm.bright': 'Bright overall: median brightness {m}; about 40–60% is comfortable.',
+    'm.highkey': ' Nothing is blown out, and fog, snow or white walls are usually meant to be bright, so this is off by default.', 'm.night': ' Looks like a night scene, so it is only lifted a little.', 'm.backlit': ' The highlights are already bright (backlit), so it is only lifted a little.',
+    'm.expOk': 'Median brightness {m}. Nothing to change.',
+    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Both ends are stretched.', 'm.levelsOk': 'Black and white points are in place.',
+    'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulled back for detail.', 'm.keyHi': ' The whole scene is bright on purpose, so this is off by default.',
+    'm.shadows': '{f} of the frame is very dark; lifted for detail.', 'm.backlit2': 'Backlit: the dark areas are lifted.',
+    'm.cast': 'The brightest areas should be white but look {dir}. Corrected by 70%.', 'm.warmMood': ' The cast is mild, and a slightly warm tone is often the mood, so this is off by default.',
+    'd.castBlue': 'blue', 'd.castYellow': 'yellow', 'd.castGreen': 'green', 'd.castMagenta': 'magenta',
+    'm.sunset': 'Warm colors dominate, like sunrise or sunset. Kept warm.', 'm.wbOk': 'Highlights are close to neutral.', 'm.wbNone': 'No white reference in the frame, so this cannot be judged.',
+    'm.pale': 'Colors are pale: mean saturation {s}.', 'm.heavy': 'Colors are already heavy: mean saturation {s}. Eased slightly.', 'm.colorOk': 'Mean saturation {s}. Fine as it is.',
+    'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so this is off by default.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
+    'm.midHorizon': 'The horizon sits on the middle line, which tends to look static. Try it on a third.', 'm.score': 'Scores {n} by the rules.',
+    'm.look.sunset': 'Warm colors make up {w}, a sunset mood', 'm.look.duo': 'Blues {a} and warm tones {w} are complementary', 'm.look.aqua': 'Sky and water make up {a} of the color', 'm.look.green': 'Green makes up {g} of the color', 'm.look.mono': 'There is almost no color', 'm.look.mixed': 'Colors are scattered',
+    'm.try': '. Try "{name}".',
+    'pal.note': 'Blues {a} · Greens {g} · Warm {w}',
+    's.exposure': 'Exposure', 's.contrast': 'Contrast', 's.highlights': 'Highlights', 's.shadows': 'Shadows', 's.whites': 'Whites', 's.blacks': 'Blacks',
+    's.temp': 'Temperature', 's.tint': 'Tint', 's.vibrance': 'Vibrance', 's.saturation': 'Saturation',
     's.aquaSat': 'Saturation', 's.aquaHue': 'Hue', 's.aquaLum': 'Brightness', 's.greenSat': 'Greens', 's.warmSat': 'Warm tones',
-    's.clarity': 'Clarity', 's.fade': 'Fade', 's.vignette': 'Vignette', 's.shHue': 'Shadow hue', 's.shAmt': 'Shadow amount', 's.hiHue': 'Highlight hue', 's.hiAmt': 'Highlight amount',
-    'g.light': 'Light', 'g.color': 'Color', 'g.blues': 'Sky and water', 'g.sat': 'Boost one color', 'g.texture': 'Texture', 'g.split': 'Split toning',
-    'lk.none': 'Natural', 'lk.clear': 'Clear', 'lk.tealorange': 'Cinematic', 'lk.golden': 'Golden', 'lk.deepblue': 'Deep blue', 'lk.film': 'Film', 'lk.airy': 'Airy', 'lk.jungle': 'Forest', 'lk.bw': 'Mono',
-    'cr.full': 'Full', 'cr.tight': 'Tighter',
-    'a.lang': '切换到中文', 'a.theme': 'Switch day / night', 'a.preview': 'Photo preview', 'a.hist': 'Histogram',
+    's.clarity': 'Clarity', 's.fade': 'Fade', 's.vignette': 'Vignette', 's.shHue': 'Shadow hue', 's.shAmt': 'Shadow amount', 's.hiHue': 'Highlight hue', 's.hiAmt': 'Highlight amount', 's.rotate': 'Straighten',
+    'g.light': 'Light', 'g.color': 'Color', 'g.blues': 'Sky and water', 'g.sat': 'Foliage and warm tones', 'g.texture': 'Texture', 'g.split': 'Split toning',
+    'lk.none': 'Natural', 'lk.clear': 'Clear', 'lk.tealorange': 'Teal & orange', 'lk.golden': 'Golden hour', 'lk.deepblue': 'Deep blue', 'lk.film': 'Film', 'lk.airy': 'Airy', 'lk.jungle': 'Forest', 'lk.bw': 'Mono',
+    'cr.full': 'Full', 'cr.tight': 'Tighter', 'r.free': 'Free', 'r.orig': 'Original',
+    'ov.none': 'None', 'ov.thirds': 'Thirds', 'ov.phi': 'Golden ratio', 'ov.diag': 'Diagonals', 'ov.spiral': 'Golden spiral', 'ov.center': 'Center',
+    'mt.all': 'Overall', 'mt.subject': 'Subject placement', 'mt.keep': 'Content kept', 'mt.clean': 'Clean edges', 'mt.horizon': 'Horizon placement',
+    'hist.lo': 'Shadows', 'hist.hi': 'Highlights', 'hist.loClip': 'Crushed {p}', 'hist.hiClip': 'Blown {p}',
+    'a.lang': '切换到中文', 'a.theme': 'Switch day / night', 'a.preview': 'Photo preview', 'a.hist': 'RGB histogram',
     'sheet.hint': 'Long-press or right-click the picture to save it.',
     't.reading': 'Reading {i} / {n}', 't.added': 'Added {n}', 't.heic': '{n} could not be opened. This browser cannot read HEIC; convert to JPEG first.', 't.bad': '{n} could not be opened',
     't.saved': 'Saved', 't.cancel': 'Cancelled', 't.wait': 'Try again in a moment', 't.fail': 'Could not save; the photo may be too large', 't.zip': 'This window cannot save a zip; save photos one at a time', 't.partial': '{n} failed; the rest are in the zip',
-    't.synced': 'Applied to {n} more', 't.read': 'Could not read this photo',
+    't.synced': 'Applied to {n} more', 't.read': 'Could not read this photo', 't.noHorizon': 'No clear horizon found; drag the slider instead', 't.level': 'Already level',
   },
 };
 let lang = store.get('sl-lang') || ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
@@ -327,6 +408,7 @@ function applyLang() {
   $('#btnLang').textContent = lang === 'zh' ? 'EN' : '中';
   $('#brandCn').hidden = lang !== 'zh';
   document.title = lang === 'zh' ? '第二眼 · Second Look' : 'Second Look';
+  if (cur()) { renderPanels(); drawHist(); } // texts built from measurements
 }
 
 /* ================= day / night ================= */
@@ -344,15 +426,14 @@ if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListen
 const DEF = { exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0, temp: 0, tint: 0,
   vibrance: 0, saturation: 0, aquaSat: 0, aquaHue: 0, aquaLum: 0, greenSat: 0, warmSat: 0,
   clarity: 0, fade: 0, vignette: 0, shHue: 210, shAmt: 0, hiHue: 40, hiAmt: 0 };
-const fmtParam = (k, v) => (k === 'shHue' || k === 'hiHue' ? Math.round(v) + '°' : signed(v));
-const BASIC = [['exposure'], ['temp', 't-temp'], ['vibrance'], ['contrast']];
+const fmtParam = (k, v) => (k === 'exposure' ? signed(v / 50, 2) + ' EV' : k === 'shHue' || k === 'hiHue' ? Math.round(v) + '°' : signed(v));
 const GROUPS = [
-  { title: 'g.light', items: [['highlights'], ['shadows'], ['whites'], ['blacks']] },
-  { title: 'g.color', items: [['tint', 't-tint'], ['saturation']] },
+  { title: 'g.light', items: [['exposure'], ['contrast'], ['highlights'], ['shadows'], ['whites'], ['blacks']] },
+  { title: 'g.color', items: [['temp', 't-temp'], ['tint', 't-tint'], ['vibrance'], ['saturation']] },
   { title: 'g.blues', items: [['aquaSat'], ['aquaHue', 't-aqua'], ['aquaLum']] },
   { title: 'g.sat', items: [['greenSat'], ['warmSat']] },
   { title: 'g.texture', items: [['clarity'], ['fade', '', 0, 100], ['vignette', '', 0, 100]] },
-  { title: 'g.split', items: [['shHue', 't-hue', 0, 360], ['shAmt', '', 0, 100], ['hiHue', 't-hue', 0, 360], ['hiAmt', '', 0, 100]] },
+  { title: 'g.split', fold: true, items: [['shHue', 't-hue', 0, 360], ['shAmt', '', 0, 100], ['hiHue', 't-hue', 0, 360], ['hiAmt', '', 0, 100]] },
 ];
 const LOOKS = [
   { id: 'none', p: {} },
@@ -367,10 +448,11 @@ const LOOKS = [
 ];
 const LOOK_AMT = 70;
 /* crop shapes: null = free, 0 = same as the photo, otherwise width / height */
-const RATIOS = { free: null, orig: 0, '4:5': 4 / 5, '1:1': 1, '16:9': 16 / 9, '9:16': 9 / 16 };
+const RATIOS = { free: null, orig: 0, '1:1': 1, '4:5': 4 / 5, '3:4': 3 / 4, '3:2': 3 / 2, '16:9': 16 / 9, '9:16': 9 / 16 };
+const OVERLAYS = ['none', 'thirds', 'phi', 'diag', 'spiral', 'center'];
 const FULL = { x: 0, y: 0, w: 1, h: 1 };
 
-const state = { photos: [], cur: -1, tab: 'fix', compare: false };
+const state = { photos: [], cur: -1, tab: 'diag', compare: false, overlay: 'thirds', spiral: 0 };
 const cur = () => state.photos[state.cur];
 let uid = 0;
 
@@ -600,9 +682,9 @@ function scoreCrop(an, r) {
   const x0 = clamp(Math.round(r.x * W), 0, W - 4), y0 = clamp(Math.round(r.y * H), 0, H - 4);
   const x1 = clamp(Math.round((r.x + r.w) * W), x0 + 4, W), y1 = clamp(Math.round((r.y + r.h) * H), y0 + 4, H);
   const m = rsum(s.I, W, x0, y0, x1, y1);
-  const keep = s.tot > 0 ? m / s.tot : 1;
-  let comp = 0.5;
-  if (an.subject.strong) {
+  const keep = s.tot > 0 ? clamp(m / s.tot, 0, 1) : 1;
+  let comp = 0.5; const hasSubj = an.subject.strong;
+  if (hasSubj) {
     const sx = (an.subject.x - r.x) / r.w, sy = (an.subject.y - r.y) / r.h;
     if (sx < 0.04 || sx > 0.96 || sy < 0.04 || sy > 0.96) comp = 0;
     else {
@@ -621,7 +703,8 @@ function scoreCrop(an, r) {
     const hy = (an.horizon.pos - r.y) / r.h;
     if (hy > 0.03 && hy < 0.97) hz = Math.max(Math.exp(-((Math.min(Math.abs(hy - 1 / 3), Math.abs(hy - 2 / 3)) / 0.07) ** 2)), 0.1);
   }
-  return hz === null ? 0.55 * comp + 0.27 * keep + 0.18 * clean : 0.42 * comp + 0.22 * keep + 0.14 * clean + 0.22 * hz;
+  const score = hz === null ? 0.55 * comp + 0.27 * keep + 0.18 * clean : 0.42 * comp + 0.22 * keep + 0.14 * clean + 0.22 * hz;
+  return { score, comp, keep, clean, hz, hasSubj };
 }
 /* Connected region of strong local contrast around a seed cell, as a box in 0..1. Null when it is not a compact thing. */
 function growBox(cm, sw, sh, sx, sy, lenient) {
@@ -645,46 +728,37 @@ function growBox(cm, sw, sh, sx, sy, lenient) {
   if (cnt < 4 || cnt / (sw * sh) > (lenient ? 0.45 : 0.3) || bw > 0.75 || bh > 0.9) return null;
   return { x0: x0 / sw, y0: y0 / sh, x1: (x1 + 1) / sw, y1: (y1 + 1) / sh };
 }
-/* Crops built around the subject: never cut it, and keep it where the photographer put it.
-   Which way a person faces cannot be told by rules, so the subject is never pushed to one side. */
-function subjectCrops(B, ph) {
-  const bw = B.x1 - B.x0, bh = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
-  /* what must stay inside: generous above (heads), modest at the sides, a little below */
-  const px0 = Math.max(0, B.x0 - 0.3 * bw), px1 = Math.min(1, B.x1 + 0.3 * bw), py0 = Math.max(0, B.y0 - 0.3 * bh), py1 = Math.min(1, B.y1 + 0.08 * bh);
-  const fit = (pos, size, lo, hi, keepStart) => {
-    if (hi - lo <= size) { if (pos > lo) pos = lo; if (pos + size < hi) pos = hi - size; }
-    else pos = keepStart ? lo : (lo + hi) / 2 - size / 2;
-    return clamp(pos, 0, 1 - size);
-  };
-  const place = (w, h) => ({ x: fit(cx - cx * w, w, px0, px1, false), y: fit(cy - cy * h, h, py0, py1, true), w, h });
-  const s = clamp(Math.max(bh / 0.6, bw / 0.5, px1 - px0, py1 - py0), 0.5, 0.9);
-  const out = [{ key: 'tight', aspect: 'orig', rect: place(s, s) }];
-  for (const key of ['4:5', '1:1', '16:9', '9:16']) {
-    const rN = RATIOS[key] * ph.h / ph.w;
-    out.push({ key, aspect: key, rect: place(rN >= 1 ? 1 : rN, rN >= 1 ? 1 / rN : 1) });
+/* One suggested rectangle for a shape ("tight" = the photo's own shape, smaller than the full frame).
+   With a subject: never cut it, and keep it where the photographer put it. Which way a person faces
+   cannot be told by rules, so the subject is never pushed to one side.
+   Without one: search for the rectangle that scores best on content, edges and horizon placement. */
+function cropFor(an, ph, key) {
+  const tight = key === 'tight', r0 = tight ? 0 : RATIOS[key], rN = r0 === 0 ? 1 : r0 * ph.h / ph.w;
+  const mw = rN >= 1 ? 1 : rN, mh = rN >= 1 ? 1 / rN : 1, B = an.subject.box;
+  if (B) {
+    const bw = B.x1 - B.x0, bh = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
+    /* what must stay inside: generous above (heads), modest at the sides, a little below */
+    const px0 = Math.max(0, B.x0 - 0.3 * bw), px1 = Math.min(1, B.x1 + 0.3 * bw), py0 = Math.max(0, B.y0 - 0.3 * bh), py1 = Math.min(1, B.y1 + 0.08 * bh);
+    const fit = (pos, size, lo, hi, keepStart) => {
+      if (hi - lo <= size) { if (pos > lo) pos = lo; if (pos + size < hi) pos = hi - size; }
+      else pos = keepStart ? lo : (lo + hi) / 2 - size / 2;
+      return clamp(pos, 0, 1 - size);
+    };
+    const s = tight ? clamp(Math.max(bh / 0.6, bw / 0.5, px1 - px0, py1 - py0), 0.5, 0.9) : 1, w = mw * s, h = mh * s;
+    return { x: fit(cx - cx * w, w, px0, px1, false), y: fit(cy - cy * h, h, py0, py1, true), w, h };
   }
-  return out;
-}
-/* best rectangle per shape; "tight" keeps the photo's own shape but must be smaller than the full frame */
-function suggestCrops(an, ph) {
-  if (an.subject.box) return subjectCrops(an.subject.box, ph);
-  const out = [];
-  for (const [key, aspect] of [['tight', 'orig'], ['4:5', '4:5'], ['1:1', '1:1'], ['16:9', '16:9'], ['9:16', '9:16']]) {
-    const r0 = RATIOS[aspect], rN = r0 === 0 ? 1 : r0 * ph.h / ph.w;
-    const mw = rN >= 1 ? 1 : rN, mh = rN >= 1 ? 1 / rN : 1;
-    let best = null;
-    for (const sc of key === 'tight' ? [0.9, 0.82, 0.74, 0.66, 0.6] : [1, 0.92, 0.84, 0.76, 0.68, 0.6]) {
-      const w = mw * sc, h = mh * sc, nx = w < 0.999 ? 20 : 0, ny = h < 0.999 ? 20 : 0;
-      for (let iy = 0; iy <= ny; iy++) for (let ix = 0; ix <= nx; ix++) {
-        const r = { x: nx ? (1 - w) * ix / nx : 0, y: ny ? (1 - h) * iy / ny : 0, w, h };
-        const v = scoreCrop(an, r) * Math.pow(sc, 0.35);
-        if (!best || v > best.v) best = { v, rect: r };
-      }
+  let best = null;
+  for (const sc of tight ? [0.9, 0.82, 0.74, 0.66, 0.6] : [1, 0.92, 0.84, 0.76, 0.68, 0.6]) {
+    const w = mw * sc, h = mh * sc, nx = w < 0.999 ? 20 : 0, ny = h < 0.999 ? 20 : 0;
+    for (let iy = 0; iy <= ny; iy++) for (let ix = 0; ix <= nx; ix++) {
+      const r = { x: nx ? (1 - w) * ix / nx : 0, y: ny ? (1 - h) * iy / ny : 0, w, h };
+      const v = scoreCrop(an, r).score * Math.pow(sc, 0.35);
+      if (!best || v > best.v) best = { v, rect: r };
     }
-    out.push({ key, aspect, rect: best.rect });
   }
-  return out;
+  return best.rect;
 }
+const suggestCrops = (an, ph) => ['tight', '4:5', '1:1', '16:9', '9:16'].map((key) => ({ key, aspect: key === 'tight' ? 'orig' : key, rect: cropFor(an, ph, key) }));
 
 function analyze(ph) {
   const src = ph.proxy, { fw, fh } = frameDims(src.width, src.height, ph.angle);
@@ -693,7 +767,8 @@ function analyze(ph) {
   drawGeom(cx, src, src.width, src.height, ph.angle, FULL, W, H);
   const d = cx.getImageData(0, 0, W, H).data, n = W * H;
   const lum = new Float32Array(n), hist = new Float64Array(256);
-  let clipHi = 0, satSum = 0, satN = 0, chroN = 0, fAqua = 0, fGreen = 0, fWarm = 0, chroTot = 0;
+  let clipHi = 0, satSum = 0, satN = 0, chroN = 0, fAqua = 0, fGreen = 0, fWarm = 0, chroTot = 0, nN = 0, nR = 0, nG = 0, nB = 0;
+  const hw = new Float64Array(36), hc = new Float64Array(36), hr = new Float64Array(36), hg = new Float64Array(36), hb = new Float64Array(36);
   for (let i = 0, j = 0; j < n; i += 4, j++) {
     const r = d[i], g = d[i + 1], b = d[i + 2], Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     lum[j] = Y; hist[Math.min(255, Y | 0)]++;
@@ -703,8 +778,9 @@ function analyze(ph) {
     if (ch > 26) {
       let hh = mx === r ? (g - b) / ch : mx === g ? (b - r) / ch + 2 : (r - g) / ch + 4; hh *= 60; if (hh < 0) hh += 360;
       chroN++; chroTot += ch;
+      const bi = Math.min(35, (hh / 10) | 0); hw[bi] += ch; hc[bi]++; hr[bi] += r; hg[bi] += g; hb[bi] += b;
       if (hh >= 160 && hh < 262) fAqua += ch; else if (hh >= 65 && hh < 160) fGreen += ch; else if (hh < 62 || hh >= 335) fWarm += ch;
-    }
+    } else { nN++; nR += r; nG += g; nB += b; }
   }
   const p = {}; for (const [k, q] of [['p005', 0.005], ['p10', 0.1], ['p50', 0.5], ['p90', 0.9], ['p95', 0.95], ['p995', 0.995]]) p[k] = percentile(hist, n, q);
   /* white point: average of the brightest, not-too-colorful, unclipped pixels */
@@ -718,6 +794,18 @@ function analyze(ph) {
   const hues = chroTot ? { aqua: fAqua / chroTot, green: fGreen / chroTot, warm: fWarm / chroTot, chroma: chroN / n } : { aqua: 0, green: 0, warm: 0, chroma: 0 };
   let wbEst = null;
   if (wn > n * 0.008 && wr > 0 && wg > 0 && wb > 0) wbEst = { t: Math.log(wb / wr) / 0.7 * 100, n: Math.log(wg / Math.sqrt(wr * wb)) / 0.25 * 100 };
+
+  /* palette: the strongest hue clusters plus the neutral remainder */
+  const pal = [], used = new Uint8Array(36);
+  for (let it = 0; it < 4; it++) {
+    let bi = -1, bv = 0; for (let k = 0; k < 36; k++) if (!used[k] && hw[k] > bv) { bv = hw[k]; bi = k; }
+    if (bi < 0) break;
+    let cN = 0, r = 0, g = 0, b = 0;
+    for (let o = -2; o <= 2; o++) { const k = (bi + o + 36) % 36; if (used[k]) continue; used[k] = 1; cN += hc[k]; r += hr[k]; g += hg[k]; b += hb[k]; }
+    if (cN / n > 0.025) pal.push({ share: cN / n, rgb: [r / cN, g / cN, b / cN] });
+  }
+  if (nN / n > 0.04) pal.push({ share: nN / n, rgb: [nR / nN, nG / nN, nB / nN] });
+  pal.sort((a, b) => b.share - a.share);
 
   const horizon = detectHorizon(lum, W, H);
 
@@ -762,7 +850,7 @@ function analyze(ph) {
   }
   let tot = 0; for (let j = 0; j < m; j++) tot += sal[j];
 
-  const an = { hist, n, p, clipHi: clipHi / n, sat: satN ? satSum / satN : 0, hues, wbEst, horizon, subject, sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
+  const an = { hist, n, p, clipHi: clipHi / n, sat: satN ? satSum / satN : 0, hues, wbEst, pal, horizon, subject, sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
   an.tone = suggestTone(an);
   an.crops = suggestCrops(an, ph);
   return an;
@@ -774,7 +862,7 @@ function suggestTone(an) {
   const frac = (L, lo, hi) => { let s = 0; for (let i = 0; i < 256; i++) if (L[i] >= lo && L[i] <= hi) s += h[i]; return s / n; };
   const med = p.p50 / 255, flat = p.p995 - p.p005 < 12; // a blank frame has nothing to stretch
   const night = med < 0.2, backlit = med < 0.4 && p.p95 / 255 > 0.85;
-  f.med = med;
+  f.med = med; f.night = night; f.backlit = backlit; f.lo = p.p005 / 255; f.hi = p.p995 / 255; f.fracHi = 0; f.fracLo = 0;
   if (flat) return f;
   let target = med;
   if (med < 0.4) target = med + (0.45 - med) * (backlit ? 0.4 : 0.85);
@@ -790,10 +878,13 @@ function suggestTone(an) {
   }
   let L = lut();
   const hi = L[p.p995], lo = L[p.p005];
+  f.lo = lo; f.hi = hi;
   if (hi < 0.94 && !night) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
-  if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, 70)); if (f.blacks > -5) delete f.blacks; }
+  /* a lifted black point alone (whites already in place) may be a deliberate faded look: correct it only partly */
+  if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, f.whites ? 70 : 30)); if (f.blacks > -5) delete f.blacks; }
   P.whites = f.whites || 0; P.blacks = f.blacks || 0; L = lut();
   const fh = frac(L, 0.93, 2), fl = frac(L, -1, 0.09);
+  f.fracHi = fh; f.fracLo = fl;
   if (fh > 0.06) f.highlights = -Math.round(clamp(18 + fh * 220, 18, 60));
   if (!night && (fl > 0.14 || backlit)) f.shadows = Math.round(clamp(15 + fl * 110 + (backlit ? 12 : 0), 15, 55));
   P.highlights = f.highlights || 0; P.shadows = f.shadows || 0; L = lut();
@@ -808,7 +899,7 @@ function makeBase(an) {
   if (t.exposure) fixes.push({ id: t.exposure > 0 ? 'brighten' : 'darken', p: { exposure: t.exposure }, on: !t.optional });
   const lv = {}; for (const k of ['whites', 'blacks', 'contrast']) if (t[k]) lv[k] = t[k];
   if (Object.keys(lv).length) fixes.push({ id: 'haze', p: lv, on: true });
-  if (t.highlights || an.clipHi > 0.02) fixes.push({ id: 'highlights', p: { highlights: t.highlights || -30 }, on: true });
+  if (t.highlights || an.clipHi > 0.02) fixes.push({ id: 'highlights', p: { highlights: t.highlights || -30 }, on: !t.optional });
   if (t.shadows) fixes.push({ id: 'shadows', p: { shadows: t.shadows }, on: true });
   const sunset = an.hues.warm > 0.5 && t.med < 0.55, wb = an.wbEst;
   if (!sunset && wb && (Math.abs(wb.t) > 9 || Math.abs(wb.n) > 12)) {
@@ -818,13 +909,14 @@ function makeBase(an) {
     /* a cool cast is nearly always a fault; a mild warm one is often the mood, so it is offered but left off */
     if (Object.keys(p).length) fixes.push({ id, p, on: wb.t > 12 || wb.t < -28 || Math.abs(wb.n) > 16 });
   }
-  if (an.sat < 0.2 && an.hues.chroma > 0.05) fixes.push({ id: 'richer', p: { vibrance: Math.round(clamp((0.3 - an.sat) * 230, 10, 36)) }, on: true });
+  if (an.sat < 0.2 && an.hues.chroma > 0.05) fixes.push({ id: 'richer', p: { vibrance: Math.round(clamp((0.3 - an.sat) * 200, 10, 28)) }, on: true });
   else if (an.sat > 0.62) fixes.push({ id: 'calmer', p: { saturation: -10 }, on: true });
   const hz = an.horizon;
   if (hz.found && Math.abs(hz.deg) >= 0.4) fixes.push({ id: 'level', angle: clamp(Math.round(-hz.deg * 10) / 10, -15, 15), on: Math.abs(hz.deg) <= 5 });
   const h = an.hues;
-  const look = sunset ? 'golden' : h.aqua > 0.45 ? (h.warm > 0.12 ? 'tealorange' : 'clear') : h.green > 0.4 ? 'jungle' : h.chroma < 0.05 ? 'bw' : 'film';
-  return { fixes, look };
+  const why = sunset ? 'sunset' : h.aqua > 0.45 ? (h.warm > 0.12 ? 'duo' : 'aqua') : h.green > 0.4 ? 'green' : h.chroma < 0.05 ? 'mono' : 'mixed';
+  const look = { sunset: 'golden', duo: 'tealorange', aqua: 'clear', green: 'jungle', mono: 'bw', mixed: 'film' }[why];
+  return { fixes, look, m: { tone: t, wbEst: wb, sat: an.sat, clipHi: an.clipHi, hues: h, pal: an.pal, horizon: hz, sunset, why } };
 }
 function applyDefaults(ph) {
   ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.angle = 0; ph.fix = {}; ph.subj = null;
@@ -1018,7 +1110,7 @@ function renderColor() {
   if (P.clarity && !blurMap) blurMap = makeBlur(geomC);
   process(srcData.data, outData.data, geomC.width, geomC.height, 0, geomC.height, P, buildLUTs(P), P.clarity ? blurMap : null);
   pctx.putImageData(outData, 0, 0);
-  if ($('#more').open) drawHist();
+  drawHist();
 }
 function render(fast) {
   wantFast = fast === false ? false : wantFast || fast;
@@ -1037,7 +1129,9 @@ function onIdle() {
   if (ph.anKey !== key) { ph.an = analyze(ph); ph.anKey = key; if (state.tab === 'crop') paint(); }
   if (state.tab === 'crop') renderCrops();
   else { const t = ph.thumb.getContext('2d'); t.clearRect(0, 0, TW, TH); cover(t, procC); }
-  if (state.tab === 'style') renderLooks();
+  if (state.tab === 'color') renderLooks();
+  if (state.tab === 'diag') renderDiag();
+  renderMeters(); renderMeta();
 }
 function paint() {
   const ph = cur(); if (!ph) return;
@@ -1053,8 +1147,27 @@ function paintCrop(ph) {
   c.fillStyle = 'rgba(10,12,12,0.6)';
   c.beginPath(); c.rect(dest.x, dest.y, dest.w, dest.h); c.rect(r.x, r.y, r.w, r.h); c.fill('evenodd');
   const line = (path, wid, col) => { c.beginPath(); path(); c.lineWidth = wid * d; c.strokeStyle = col; c.stroke(); };
-  const thirds = () => { for (const u of [1 / 3, 2 / 3]) { c.moveTo(r.x + u * r.w, r.y); c.lineTo(r.x + u * r.w, r.y + r.h); c.moveTo(r.x, r.y + u * r.h); c.lineTo(r.x + r.w, r.y + u * r.h); } };
-  line(thirds, 2.2, 'rgba(0,0,0,0.3)'); line(thirds, 1, 'rgba(255,255,255,0.8)');
+  const guide = (path) => { line(path, 2.2, 'rgba(0,0,0,0.3)'); line(path, 1, 'rgba(255,255,255,0.85)'); };
+  const X = (u) => r.x + u * r.w, Y = (v) => r.y + v * r.h;
+  const grid = (a, b) => guide(() => { for (const u of [a, b]) { c.moveTo(X(u), r.y); c.lineTo(X(u), r.y + r.h); c.moveTo(r.x, Y(u)); c.lineTo(r.x + r.w, Y(u)); } });
+  if (state.overlay === 'thirds') grid(1 / 3, 2 / 3);
+  else if (state.overlay === 'phi') grid(0.382, 0.618);
+  else if (state.overlay === 'diag') guide(() => { c.moveTo(r.x, r.y); c.lineTo(X(1), Y(1)); c.moveTo(X(1), r.y); c.lineTo(r.x, Y(1)); });
+  else if (state.overlay === 'center') guide(() => { c.moveTo(X(0.5), r.y); c.lineTo(X(0.5), Y(1)); c.moveTo(r.x, Y(0.5)); c.lineTo(X(1), Y(0.5)); });
+  else if (state.overlay === 'spiral') guide(() => {
+    c.save(); c.translate(r.x, r.y); c.scale(r.w, r.h);
+    if (state.spiral & 1) { c.translate(1, 0); c.scale(-1, 1); }
+    if (state.spiral & 2) { c.translate(0, 1); c.scale(1, -1); }
+    let x = 0, y = 0, w = 1, h = 1; const k = 0.6180339887, PI = Math.PI;
+    for (let i = 0; i < 10; i++) {
+      const m = i % 4;
+      if (m === 0) { const s = w * k; c.ellipse(x + s, y + h, s, h, 0, PI, 1.5 * PI); c.moveTo(x + s, y); c.lineTo(x + s, y + h); c.moveTo(x + s, y); x += s; w -= s; }
+      else if (m === 1) { const s = h * k; c.ellipse(x, y + s, w, s, 0, 1.5 * PI, 2 * PI); c.moveTo(x, y + s); c.lineTo(x + w, y + s); y += s; h -= s; }
+      else if (m === 2) { const s = w * k; c.moveTo(x + w, y); c.ellipse(x + w - s, y, s, h, 0, 0, 0.5 * PI); c.moveTo(x + w - s, y); c.lineTo(x + w - s, y + h); c.moveTo(x + w - s, y + h); w -= s; }
+      else { const s = h * k; c.moveTo(x + w, y + h); c.ellipse(x + w, y + h - s, w, s, 0, 0.5 * PI, PI); c.moveTo(x, y + h - s); c.lineTo(x + w, y + h - s); c.moveTo(x, y + h - s); h -= s; }
+    }
+    c.restore();
+  });
   const B = ph.an && ph.anKey === anKeyOf(ph) ? ph.an.subject.box : null;
   if (B) { /* the subject the crops are built around; tap the photo to move it */
     const sb = () => c.rect(dest.x + B.x0 * dest.w, dest.y + B.y0 * dest.h, (B.x1 - B.x0) * dest.w, (B.y1 - B.y0) * dest.h);
@@ -1066,15 +1179,18 @@ function paintCrop(ph) {
   c.restore();
 }
 
-/* histogram of what is on screen (shown with the extra controls) */
+/* histogram of what is on screen, with how much is clipped at each end */
 const histC = $('#hist'), hctx = histC.getContext('2d');
 function drawHist() {
   if (!outData) return;
   const d = outData.data, R = new Uint32Array(256), G = new Uint32Array(256), B = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 16) { R[d[i]]++; G[d[i + 1]]++; B[d[i + 2]]++; }
+  let n = 0, hi = 0, lo = 0;
+  for (let i = 0; i < d.length; i += 16) { const r = d[i], g = d[i + 1], b = d[i + 2]; R[r]++; G[g]++; B[b]++; n++; if (r > 252 || g > 252 || b > 252) hi++; if (r < 3 && g < 3 && b < 3) lo++; }
   let mx = 1; for (let i = 4; i < 252; i++) mx = Math.max(mx, R[i], G[i], B[i]);
   const W = histC.width, H = histC.height;
   hctx.globalCompositeOperation = 'source-over'; hctx.fillStyle = '#17191a'; hctx.fillRect(0, 0, W, H);
+  hctx.strokeStyle = '#2c3031'; hctx.lineWidth = 1; hctx.beginPath();
+  for (let k = 1; k < 4; k++) { hctx.moveTo(W * k / 4 + 0.5, 0); hctx.lineTo(W * k / 4 + 0.5, H); } hctx.stroke();
   hctx.globalCompositeOperation = 'lighter';
   for (const [a, col] of [[R, '#d84c4c'], [G, '#3fae5c'], [B, '#3f7fe0']]) {
     hctx.fillStyle = col; hctx.beginPath(); hctx.moveTo(0, H);
@@ -1082,72 +1198,125 @@ function drawHist() {
     hctx.lineTo(W, H); hctx.fill();
   }
   hctx.globalCompositeOperation = 'source-over';
+  const hiP = n ? hi / n : 0, loP = n ? lo / n : 0, p1 = (v) => (v * 100).toFixed(1) + '%';
+  $('#clipHi').textContent = hiP > 0.004 ? tr('hist.hiClip', { p: p1(hiP) }) : tr('hist.hi'); $('#clipHi').className = hiP > 0.004 ? 'hot' : '';
+  $('#clipLo').textContent = loP > 0.004 ? tr('hist.loClip', { p: p1(loP) }) : tr('hist.lo'); $('#clipLo').className = loP > 0.004 ? 'hot' : '';
 }
-$('#more').addEventListener('toggle', () => { if ($('#more').open) drawHist(); });
 
 /* ================= UI ================= */
+const pct = (v) => Math.round(v * 100) + '%';
 function renderStrip() {
   const box = $('#thumbs'); box.textContent = '';
   state.photos.forEach((ph, i) => {
     const b = el('button', { class: 'thumb', 'aria-current': String(i === state.cur), onclick: () => select(i) }, ph.thumb);
-    if (ph.sample) { b.setAttribute('data-i18n-label', 'sample'); b.setAttribute('aria-label', tr('sample')); b.append(el('span', { class: 'tag', ...I('sample') })); }
+    if (ph.sample) { b.setAttribute('data-i18n-label', 'sampleName'); b.setAttribute('aria-label', tr('sampleName')); b.title = tr('sampleName'); b.append(el('span', { class: 'tag', ...I('sample') })); }
     else { b.title = ph.name; b.setAttribute('aria-label', ph.name); }
     box.append(b);
   });
   const many = state.photos.filter((p) => !p.sample).length > 1;
   $('#btnExportAll').hidden = !many; $('#btnSync').hidden = !many;
 }
+function renderMeta() {
+  const ph = cur(), m = $('#meta'); m.textContent = ''; if (!ph) return;
+  const [ow, oh] = outSize(ph.w, ph.h, ph.angle, ph.crop);
+  m.append(el('b', { text: ph.sample ? tr('sampleName') : ph.name }), `${ph.w}×${ph.h} → ${ow}×${oh}`);
+}
 let toastT = 0;
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); if (ms) toastT = setTimeout(() => (t.hidden = true), ms); }
 
-function renderFixes() {
-  const ph = cur(), box = $('#fixes'); box.textContent = '';
-  if (!ph || !ph.base) return;
-  if (!ph.base.fixes.length) { box.append(el('p', { class: 'nofix', ...I('nofix') })); return; }
-  for (const f of ph.base.fixes) {
-    box.append(el('button', { class: 'fix', role: 'switch', 'aria-checked': String(fixOn(ph, f)), onclick: () => {
-      if (f.id === 'level') ph.angle = ph.angle === f.angle ? 0 : f.angle; else ph.fix[f.id] = !ph.fix[f.id];
-      afterEdit();
-    } }, el('span', I('fx.' + f.id)), el('i')));
+/* ---- diagnose: what was measured, why, and a switch for each fix ---- */
+const fixText = (f) => (f.id === 'level' ? tr('s.rotate') + ' ' + signed(f.angle, 1) + '°' : Object.keys(f.p).map((k) => tr('s.' + k) + ' ' + fmtParam(k, f.p[k])).join('　'));
+function buildFindings(ph) {
+  const m = ph.base.m, t = m.tone, out = [], F = (...ids) => ph.base.fixes.find((f) => ids.includes(f.id));
+  let f = F('brighten', 'darken');
+  if (f) out.push({ title: 'f.exposure', fix: f, msg: tr(f.id === 'brighten' ? 'm.dark' : 'm.bright', { m: pct(t.med) }) + (t.optional ? tr('m.highkey') : t.night ? tr('m.night') : t.backlit ? tr('m.backlit') : '') });
+  else out.push({ title: 'f.exposure', msg: tr('m.expOk', { m: pct(t.med) }) });
+  f = F('haze');
+  out.push(f ? { title: 'f.levels', fix: f, msg: tr('m.haze', { lo: pct(t.lo), hi: pct(t.hi) }) } : { title: 'f.levels', msg: tr('m.levelsOk') });
+  f = F('highlights');
+  if (f) out.push({ title: 'f.highlights', fix: f, warn: m.clipHi > 0.02, msg: m.clipHi > 0.02 ? tr('m.clipped', { c: (m.clipHi * 100).toFixed(1) + '%' }) : tr('m.bright2', { f: pct(t.fracHi) }) + (f.on ? '' : tr('m.keyHi')) });
+  f = F('shadows');
+  if (f) out.push({ title: 'f.shadows', fix: f, msg: t.backlit ? tr('m.backlit2') : tr('m.shadows', { f: pct(t.fracLo) }) });
+  f = F('castBlue', 'castYellow', 'castGreen', 'castMagenta');
+  if (f) out.push({ title: 'f.wb', fix: f, msg: tr('m.cast', { dir: tr('d.' + f.id) }) + (f.on ? '' : tr('m.warmMood')) });
+  else out.push({ title: 'f.wb', msg: tr(m.sunset ? 'm.sunset' : m.wbEst ? 'm.wbOk' : 'm.wbNone') });
+  f = F('richer', 'calmer');
+  out.push(f ? { title: 'f.color', fix: f, msg: tr(f.id === 'richer' ? 'm.pale' : 'm.heavy', { s: pct(m.sat) }) } : { title: 'f.color', msg: tr('m.colorOk', { s: pct(m.sat) }) });
+  f = F('level');
+  if (f) out.push({ title: 'f.horizon', fix: f, msg: tr(m.horizon.deg > 0 ? 'm.tiltR' : 'm.tiltL', { d: Math.abs(m.horizon.deg).toFixed(1) }) + (f.on ? '' : tr('m.tiltBig')) });
+  else out.push({ title: 'f.horizon', msg: tr(m.horizon.found ? 'm.level' : 'm.noHorizon') });
+  if (ph.an && ph.anKey === anKeyOf(ph)) { /* composition is judged on the frame as it is now */
+    const hz = ph.an.horizon, hy = hz.found ? (hz.pos - ph.crop.y) / ph.crop.h : -1, mid = Math.abs(hy - 0.5) < 0.075;
+    out.push({ title: 'f.comp', go: true, tip: mid, msg: mid ? tr('m.midHorizon') : tr('m.score', { n: Math.round(scoreCrop(ph.an, ph.crop).score * 100) }) });
   }
+  out.push({ title: 'f.style', look: ph.base.look, msg: tr('m.look.' + m.why, { a: pct(m.hues.aqua), w: pct(m.hues.warm), g: pct(m.hues.green) }) + tr('m.try', { name: tr('lk.' + ph.base.look) }) });
+  return out;
 }
+function renderDiag() {
+  const ph = cur(), box = $('#findings'); box.textContent = '';
+  if (!ph || !ph.base) return;
+  let n = 0;
+  for (const r of buildFindings(ph)) {
+    const sw = !!(r.fix || r.look), on = r.fix ? fixOn(ph, r.fix) : r.look ? ph.look === r.look : false;
+    if (r.fix && on) n++;
+    const tag = r.fix ? (on ? 'tag.fixed' : 'tag.off') : r.look ? (on ? 'tag.on' : 'tag.tip') : r.tip ? 'tag.tip' : r.go ? null : 'tag.ok';
+    const row = el('div', { class: 'finding', 'data-s': sw ? (on ? (r.warn ? 'warn' : 'ok') : 'tip') : r.tip ? 'tip' : 'ok' }, el('span', { class: 'dot' }),
+      el('div', { class: 't' }, tr(r.title), tag ? el('small', { text: tr(tag) }) : null));
+    if (sw) row.append(el('button', { class: 'sw', role: 'switch', 'aria-checked': String(on), 'aria-label': tr(r.title), onclick: () => {
+      if (r.look) ph.look = on ? 'none' : r.look;
+      else if (r.fix.id === 'level') ph.angle = on ? 0 : r.fix.angle;
+      else ph.fix[r.fix.id] = !on;
+      afterEdit();
+    } }));
+    else if (r.go) row.append(el('button', { class: 'btn sm', text: tr('go'), onclick: () => setTab('crop') }));
+    else row.append(el('span'));
+    row.append(el('p', { class: 'm', text: r.msg }));
+    if (r.fix) row.append(el('div', { class: 'fix num', text: fixText(r.fix) }));
+    box.append(row);
+  }
+  $('#diagLead').textContent = tr(n ? 'lead.n' : 'lead.none', { n });
+  const swb = $('#swatches'), m = ph.base.m; swb.textContent = '';
+  for (const p of m.pal) swb.append(el('span', { style: `flex:${p.share};background:rgb(${p.rgb.map((v) => Math.round(v)).join(',')})`, title: pct(p.share) }));
+  $('#paletteNote').textContent = tr('pal.note', { a: pct(m.hues.aqua), g: pct(m.hues.green), w: pct(m.hues.warm) });
+}
+
+/* ---- color ---- */
 const sliderEls = {};
 function setFill(inp) {
   const min = +inp.min, max = +inp.max, v = +inp.value, p = (v - min) / (max - min) * 100, z = min < 0 ? 50 : 0;
   inp.style.setProperty('--a', Math.min(p, z) + '%'); inp.style.setProperty('--b', Math.max(p, z) + '%');
 }
-function sliderRow([k, cls, min, max], withNumber) {
-  const inp = el('input', { type: 'range', id: 's-' + k, min: min ?? -100, max: max ?? 100, step: 1, value: DEF[k], class: cls || '' });
-  const out = withNumber ? el('output', { class: 'num' }) : el('span');
-  inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value; if (withNumber) out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
-  inp.addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = DEF[k]; afterEdit(); });
-  sliderEls[k] = [inp, out, withNumber];
-  return el('div', { class: 'row' }, el('label', { for: 's-' + k, ...I('s.' + k) }), out, inp);
-}
 function buildSliders() {
-  for (const it of BASIC) $('#basic').append(sliderRow(it, false));
   for (const g of GROUPS) {
-    const grp = el('div', { class: 'group' }, el('h3', I(g.title)));
-    for (const it of g.items) grp.append(sliderRow(it, true));
-    $('#sliders').append(grp);
+    const grp = el('div', { class: 'group' });
+    for (const [k, cls, min, max] of g.items) {
+      const inp = el('input', { type: 'range', id: 's-' + k, min: min ?? -100, max: max ?? 100, step: 1, value: DEF[k], class: cls || '' });
+      const out = el('output', { class: 'num' });
+      inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value; out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
+      inp.addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = DEF[k]; afterEdit(); });
+      sliderEls[k] = [inp, out];
+      grp.append(el('div', { class: 'row' }, el('label', { for: 's-' + k, ...I('s.' + k) }), out, inp));
+    }
+    if (g.fold) $('#sliders').append(el('details', null, el('summary', I(g.title)), grp));
+    else { grp.prepend(el('h3', I(g.title))); $('#sliders').append(grp); }
   }
 }
 function syncControls() {
   const ph = cur(); if (!ph) return;
-  for (const k in sliderEls) { const [inp, out, num] = sliderEls[k]; inp.value = ph.adjust[k]; if (num) out.textContent = fmtParam(k, ph.adjust[k]); if (!inp.className) setFill(inp); }
-  $('#s-lookAmt').value = ph.lookAmt; setFill($('#s-lookAmt'));
+  for (const k in sliderEls) { const [inp, out] = sliderEls[k]; inp.value = ph.adjust[k]; out.textContent = fmtParam(k, ph.adjust[k]); if (!inp.className) setFill(inp); }
+  $('#s-lookAmt').value = ph.lookAmt; $('#o-lookAmt').textContent = ph.lookAmt; setFill($('#s-lookAmt'));
   $('#s-angle').value = ph.angle; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill($('#s-angle'));
   for (const b of document.querySelectorAll('#looks .tile')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.look));
+  for (const b of document.querySelectorAll('#aspects .chip')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.aspect));
 }
-/* styles: the suggested one comes right after Natural and carries a dot */
+/* styles: the suggested one comes right after Natural and carries a star */
 const lookCanvases = {};
 for (const L of LOOKS) lookCanvases[L.id] = mk(120, 90);
 function buildLooks() {
   const ph = cur(), box = $('#looks'); box.textContent = ''; if (!ph) return;
-  const rec = ph.base ? ph.base.look : null;
-  const order = LOOKS.slice().sort((a, b) => (a.id === 'none' ? -2 : a.id === rec ? -1 : 0) - (b.id === 'none' ? -2 : b.id === rec ? -1 : 0));
-  for (const L of order) {
-    const b = el('button', { class: 'tile fill', 'data-k': L.id, 'aria-pressed': String(ph.look === L.id), onclick: () => { const p = cur(); p.look = L.id; afterEdit(); } },
+  const rec = ph.base ? ph.base.look : null, rank = (l) => (l.id === 'none' ? 0 : l.id === rec ? 1 : 2);
+  for (const L of LOOKS.slice().sort((a, b) => rank(a) - rank(b))) {
+    const b = el('button', { class: 'tile fill', 'data-k': L.id, 'aria-pressed': String(ph.look === L.id), onclick: () => { const p = cur(); if (!p) return; p.look = L.id; afterEdit(); } },
       el('div', { class: 'pic' }, lookCanvases[L.id]), el('span', I('lk.' + L.id)));
     if (L.id === rec) b.append(el('i', { class: 'star', text: '★', 'aria-hidden': 'true' }));
     box.append(b);
@@ -1165,24 +1334,54 @@ function renderLooks() {
     lookCanvases[L.id].getContext('2d').putImageData(out, 0, 0);
   }
 }
+
+/* ---- crop ---- */
+const curAn = (ph) => (ph && ph.an && ph.anKey === anKeyOf(ph) ? ph.an : null);
+function buildCropUI() {
+  for (const k in RATIOS) $('#aspects').append(el('button', { class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => setAspect(k), ...(k === 'free' || k === 'orig' ? I('r.' + k) : { text: k }) }));
+  for (const k of OVERLAYS) $('#overlays').append(el('button', { class: 'chip', 'data-k': k, 'aria-pressed': String(k === state.overlay), ...I('ov.' + k), onclick: () => {
+    if (k === 'spiral' && state.overlay === 'spiral') state.spiral = (state.spiral + 1) % 4; // tap again to turn the spiral
+    state.overlay = k;
+    for (const b of document.querySelectorAll('#overlays .chip')) b.setAttribute('aria-pressed', String(b.dataset.k === k));
+    paint();
+  } }));
+}
+function setAspect(k) {
+  const ph = cur(); if (!ph) return;
+  ph.aspect = k;
+  if (k === 'orig') ph.crop = { ...FULL };
+  else if (k !== 'free') {
+    const an = curAn(ph), rN = ratioN(ph);
+    if (an) ph.crop = cropFor(an, ph, k);
+    else { const w = rN >= 1 ? 1 : rN, h = rN >= 1 ? 1 / rN : 1; ph.crop = { x: clamp(ph.crop.x + ph.crop.w / 2 - w / 2, 0, 1 - w), y: clamp(ph.crop.y + ph.crop.h / 2 - h / 2, 0, 1 - h), w, h }; }
+  }
+  syncControls(); cropChanged(); if (state.tab !== 'crop') render(false);
+}
 const sameRect = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.w - b.w) + Math.abs(a.h - b.h) < 0.004;
 function renderCrops() {
   const ph = cur(), box = $('#crops'); if (!ph) return;
   box.textContent = '';
-  if (state.tab !== 'crop' || !ph.an || ph.anKey !== anKeyOf(ph)) return;
+  const an = curAn(ph); if (state.tab !== 'crop' || !an) return;
   const { fw, fh } = frameDims(ph.w, ph.h, ph.angle);
-  const list = [{ key: 'full', aspect: 'free', rect: FULL }, ...ph.an.crops];
-  for (const s of list) {
+  for (const s of [{ key: 'full', aspect: 'free', rect: FULL }, ...an.crops]) {
     const ar = (s.rect.w * fw) / (s.rect.h * fh), cw = ar >= 4 / 3 ? 160 : Math.max(8, Math.round(120 * ar)), chh = ar >= 4 / 3 ? Math.max(8, Math.round(160 / ar)) : 120;
     const c = mk(cw, chh), x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    c.style.width = Math.min(100, ar / (4 / 3) * 100) + '%'; c.style.height = 'auto';
     x.drawImage(procC, s.rect.x * procC.width, s.rect.y * procC.height, s.rect.w * procC.width, s.rect.h * procC.height, 0, 0, cw, chh);
     const label = s.key === 'full' || s.key === 'tight' ? el('span', I('cr.' + s.key)) : el('span', { text: s.key });
-    box.append(el('button', { class: 'tile', 'aria-pressed': String(sameRect(ph.crop, s.rect)), onclick: () => { ph.aspect = s.aspect; ph.crop = { ...s.rect }; paint(); renderCrops(); } },
+    box.append(el('button', { class: 'tile', 'aria-pressed': String(sameRect(ph.crop, s.rect)), onclick: () => { ph.aspect = s.aspect; ph.crop = { ...s.rect }; syncControls(); cropChanged(); } },
       el('div', { class: 'pic' }, c), label));
   }
 }
-function renderPanels() { renderFixes(); buildLooks(); syncControls(); renderCrops(); }
-function afterEdit() { renderFixes(); syncControls(); render(false); }
+function renderMeters() {
+  const ph = cur(), box = $('#meters'), an = curAn(ph); box.textContent = ''; if (!an) return;
+  const s = scoreCrop(an, ph.crop);
+  for (const [k, v] of [['mt.all', s.score], ['mt.subject', s.hasSubj ? s.comp : null], ['mt.keep', s.keep], ['mt.clean', s.clean], ['mt.horizon', s.hz]])
+    box.append(el('span', { text: tr(k) }), el('div', { class: 'meter' }, el('i', { style: `width:${v === null ? 0 : Math.round(v * 100)}%` })), el('span', { class: 'num', text: v === null ? '—' : String(Math.round(v * 100)) }));
+}
+function cropChanged() { paint(); renderCrops(); renderMeters(); renderMeta(); }
+function renderPanels() { renderDiag(); buildLooks(); syncControls(); renderCrops(); renderMeters(); renderMeta(); }
+function afterEdit() { renderDiag(); syncControls(); render(false); }
 
 /* crop dragging */
 let drag = null;
@@ -1238,31 +1437,40 @@ view.addEventListener('pointermove', (e) => {
   }
   const w = clamp(x1 - x0, 0.01, 1), h = clamp(y1 - y0, 0.01, 1);
   ph.crop = { x: clamp(x0, 0, 1 - w), y: clamp(y0, 0, 1 - h), w, h };
-  paint();
+  paint(); renderMeters(); renderMeta();
 });
 const endDrag = (e) => {
   if (!drag || e.pointerId !== drag.id) return;
   const d = drag, ph = cur(); drag = null;
   if (e.type === 'pointerup' && !d.moved && !d.hx && !d.hy && ph && d.nx0 >= 0 && d.nx0 <= 1 && d.ny0 >= 0 && d.ny0 <= 1) { ph.subj = { x: d.nx0, y: d.ny0 }; render(false); return; }
-  renderCrops();
+  renderCrops(); renderMeters();
 };
 view.addEventListener('pointerup', endDrag); view.addEventListener('pointercancel', endDrag);
 view.addEventListener('lostpointercapture', endDrag);
 
 /* ================= tabs & actions ================= */
-const TABS = ['fix', 'style', 'crop'];
+const TABS = ['diag', 'color', 'crop'];
 function setTab(t) {
   state.tab = t; drag = null;
   for (const k of TABS) { $('#tab-' + k).setAttribute('aria-selected', String(k === t)); $('#pane-' + k).hidden = k !== t; }
   stage.classList.toggle('crop', t === 'crop'); view.style.cursor = 'default';
+  if (t === 'diag') renderDiag();
   render(false);
 }
 for (const k of TABS) $('#tab-' + k).addEventListener('click', () => setTab(k));
 
-$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.lookAmt = +e.target.value; setFill(e.target); render(true); });
+$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.lookAmt = +e.target.value; $('#o-lookAmt').textContent = ph.lookAmt; setFill(e.target); render(true); });
 $('#s-angle').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.angle = +e.target.value; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill(e.target); render(true); });
-$('#s-angle').addEventListener('change', () => renderFixes());
 $('#s-angle').addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.angle = 0; afterEdit(); });
+const levelFix = (ph) => (ph.base ? ph.base.fixes.find((f) => f.id === 'level') : null);
+$('#btnLevel').addEventListener('click', () => {
+  const ph = cur(); if (!ph) return; const f = levelFix(ph);
+  if (!f) return toast(tr(ph.base && ph.base.m.horizon.found ? 't.level' : 't.noHorizon'));
+  if (ph.angle === f.angle) return toast(tr('t.level'));
+  ph.angle = f.angle; afterEdit();
+});
+$('#btnResetCrop').addEventListener('click', () => { const ph = cur(); if (!ph) return; const f = levelFix(ph); ph.angle = f && f.on ? f.angle : 0; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.subj = null; afterEdit(); });
+$('#btnResetColor').addEventListener('click', () => { const ph = cur(); if (!ph) return; ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; afterEdit(); });
 $('#btnReset').addEventListener('click', () => { const ph = cur(); if (!ph || !ph.base) return; applyDefaults(ph); renderPanels(); render(false); });
 $('#btnSync').addEventListener('click', () => {
   const ph = cur(); if (!ph) return; let n = 0;
@@ -1375,7 +1583,7 @@ $('#btnExportAll').addEventListener('click', async () => {
 });
 
 /* ================= boot ================= */
-buildSliders(); applyLang(); paintThemeBtn();
+buildSliders(); buildCropUI(); applyLang(); paintThemeBtn();
 new ResizeObserver(() => {
   const b = stage.getBoundingClientRect(), w = Math.round(b.width * dpr()), h = Math.round(b.height * dpr());
   if (w < 4 || h < 4 || (w === view.width && h === view.height)) return;

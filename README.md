@@ -10,9 +10,11 @@ A second opinion on your photos, for people who do not know how to grade or crop
 
 ## How it works
 
-1. **Fix**: obvious faults are corrected as soon as a photo loads. Each is a switch, so turning one off shows what it did.
-2. **Style**: nine looks rendered on your own photo; tap one.
-3. **Crop**: suggested crops as pictures; tap one, or drag the box. Tap the photo to mark the subject.
+A histogram sits on top of three tabs.
+
+1. **Diagnose**: what was measured, one line on why, and a switch for each fix. Obvious faults are corrected as soon as a photo loads; turning a switch off shows what it did.
+2. **Color**: nine looks rendered on your own photo, then the full set of sliders.
+3. **Crop**: shapes, straighten, six composition guides, suggested crops as pictures, and a live score for the current framing. Tap the photo to mark the subject.
 
 | Fix | Rule |
 |---|---|
