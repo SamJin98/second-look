@@ -94,6 +94,7 @@ button, input { font: inherit; color: inherit; }
 .stage.crop canvas { touch-action: none; }
 .hold { position: absolute; left: 10px; bottom: 10px; border: 0; border-radius: 999px; padding: 6px 14px; background: var(--scope); color: #e9eded; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .hold:active, .hold.on { background: #e9eded; color: #17191a; }
+.stage.crop .hold { display: none; } /* it would sit on the crop's bottom-left corner */
 .drop { position: absolute; inset: 8px; border: 2px dashed var(--accent); border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--stage) 80%, transparent); font-size: 16px; font-weight: 600; pointer-events: none; }
 .toast { position: absolute; left: 50%; bottom: 54px; transform: translateX(-50%); background: var(--scope); color: #e9eded; padding: 6px 14px; border-radius: 6px; max-width: calc(100% - 24px); text-align: center; pointer-events: none; }
 
@@ -106,6 +107,8 @@ button, input { font: inherit; color: inherit; }
 .thumb { flex: none; position: relative; width: 86px; height: 64px; padding: 0; border: 0; border-radius: 5px; background: var(--stage); cursor: pointer; overflow: hidden; outline: 2px solid transparent; outline-offset: 1px; }
 .thumb canvas { width: 100%; height: 100%; display: block; }
 .thumb[aria-current="true"] { outline-color: var(--accent); }
+.thumb:focus-visible, .tile:focus-visible .pic { outline-color: var(--fg); }
+.thumb[aria-busy="true"] { opacity: 0.55; }
 .thumb .tag { position: absolute; left: 3px; bottom: 3px; background: var(--scope); color: #e9eded; font-size: 10px; padding: 0 5px; border-radius: 3px; }
 .privacy { flex: none; margin: 0; font-size: 12px; color: var(--muted); }
 
@@ -318,7 +321,7 @@ const STR = {
   zh: {
     'tab.diag': '诊断', 'tab.color': '调色', 'tab.crop': '裁剪',
     save: '保存', saveAll: '全部保存', busy: '处理中 {p}%', busyN: '处理中 {i} / {n}',
-    add: '添加照片', privacy: '照片不会上传', sample: '示例', sampleName: '示例：梦莲湖，Gorgo 摄，公有领域（已故意调暗调歪）', compare: '按住看原图', drop: '松手添加',
+    add: '添加照片', privacy: '照片不会上传', sample: '示例', sampleName: '示例：梦莲湖，Gorgo 摄，公有领域（已故意调暗调灰）', compare: '按住看原图', drop: '松手添加',
     reset: '重置这张', resetColor: '重置调色', resetCrop: '重置裁剪', autoLevel: '自动摆正', strength: '风格强度', applyAll: '把调色用到全部照片', close: '关闭', go: '去看看',
     'h.palette': '画面主色', 'h.style': '风格', 'h.ratio': '比例', 'h.guides': '构图参考线', 'h.crops': '建议裁剪', 'h.now': '当前构图',
     'hint.subject': '黄色虚线框是算出来的主体，认错了就点一下照片上真正的主体。',
@@ -326,7 +329,7 @@ const STR = {
     'tag.fixed': '已修正', 'tag.opt': '可选', 'tag.ok': '没问题', 'tag.tip': '建议', 'tag.on': '已套用',
     'f.exposure': '曝光', 'f.levels': '层次', 'f.highlights': '高光', 'f.shadows': '阴影', 'f.wb': '白平衡', 'f.color': '色彩', 'f.horizon': '地平线', 'f.comp': '构图', 'f.style': '风格',
     'm.dark': '整体偏暗，中位亮度 {m}，舒适区约 40–60%。', 'm.bright': '整体偏亮，中位亮度 {m}，舒适区约 40–60%。',
-    'm.highkey': '没有过曝，雾、雪、白墙这类亮调多半是有意的，所以一键修正不包含它。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
+    'm.highkey': '雪、沙滩、阴天这类场景本来就该亮，所以一键修正不包含它。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
     'm.expOk': '中位亮度 {m}，不用动。',
     'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。', 'm.flatMid': '黑白场到位，但中间调挤在一起，加一点对比度拉开。',
     'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以一键修正不包含它。',
@@ -335,7 +338,7 @@ const STR = {
     'd.castBlue': '偏蓝', 'd.castYellow': '偏黄', 'd.castGreen': '偏绿', 'd.castMagenta': '偏洋红',
     'm.sunset': '暖色占主导，像日出日落，保留暖调。', 'm.wbOk': '亮部接近中性，没有明显色偏。', 'm.wbNone': '画面里找不到白色参照，无法判断。',
     'm.pale': '颜色偏淡，平均饱和度 {s}。', 'm.heavy': '颜色已经很浓，平均饱和度 {s}，略收一点。', 'm.colorOk': '平均饱和度 {s}，浓淡合适。',
-    'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以一键修正不包含它。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
+    'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以一键修正不包含它。', 'm.tiltWeak': '这条线没有横跨整个画面，不一定是地平线，所以一键修正不包含它。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
     'm.midHorizon': '地平线压在画面中线，上下各一半容易显得呆板，试试放到三分线。', 'm.score': '按规则打 {n} 分。',
     'm.look.sunset': '暖色占 {w}，是日落气氛', 'm.look.duo': '蓝青占 {a}、暖色占 {w}，是一对互补色', 'm.look.aqua': '天空和水占了 {a} 的色彩', 'm.look.green': '绿色占了 {g} 的色彩', 'm.look.mono': '画面几乎没有颜色', 'm.look.mixed': '色彩比较分散',
     'm.try': '，试试「{name}」。',
@@ -359,7 +362,7 @@ const STR = {
   en: {
     'tab.diag': 'Diagnose', 'tab.color': 'Color', 'tab.crop': 'Crop',
     save: 'Save', saveAll: 'Save all', busy: 'Working {p}%', busyN: 'Working {i} / {n}',
-    add: 'Add photos', privacy: 'Photos stay on this device', sample: 'Sample', sampleName: 'Sample: Moraine Lake, photo by Gorgo, public domain (darkened and tilted on purpose)', compare: 'Hold for original', drop: 'Drop to add',
+    add: 'Add photos', privacy: 'Photos stay on this device', sample: 'Sample', sampleName: 'Sample: Moraine Lake, photo by Gorgo, public domain (darkened and flattened on purpose)', compare: 'Hold for original', drop: 'Drop to add',
     reset: 'Reset photo', resetColor: 'Reset color', resetCrop: 'Reset crop', autoLevel: 'Level the horizon', strength: 'Style strength', applyAll: 'Apply color to all photos', close: 'Close', go: 'Open crop',
     'h.palette': 'Palette', 'h.style': 'Style', 'h.ratio': 'Shape', 'h.guides': 'Composition guides', 'h.crops': 'Suggested crops', 'h.now': 'This framing',
     'hint.subject': 'The dashed yellow box is the detected subject. If it is wrong, tap the real subject on the photo.',
@@ -367,7 +370,7 @@ const STR = {
     'tag.fixed': 'fixed', 'tag.opt': 'optional', 'tag.ok': 'fine', 'tag.tip': 'suggestion', 'tag.on': 'applied',
     'f.exposure': 'Exposure', 'f.levels': 'Tonal range', 'f.highlights': 'Highlights', 'f.shadows': 'Shadows', 'f.wb': 'White balance', 'f.color': 'Color', 'f.horizon': 'Horizon', 'f.comp': 'Composition', 'f.style': 'Style',
     'm.dark': 'Dark overall: median brightness {m}; about 40–60% is comfortable.', 'm.bright': 'Bright overall: median brightness {m}; about 40–60% is comfortable.',
-    'm.highkey': ' Nothing is blown out, and fog, snow or white walls are usually meant to be bright, so Fix all leaves this out.', 'm.night': ' It looks like a night scene, so the lift is small.', 'm.backlit': ' The highlights are already bright (backlit), so the lift is small.',
+    'm.highkey': ' Snow, sand or an overcast sky are meant to be bright, so Fix all leaves this out.', 'm.night': ' It looks like a night scene, so the lift is small.', 'm.backlit': ' The highlights are already bright (backlit), so the lift is small.',
     'm.expOk': 'Median brightness {m}. Nothing to change.',
     'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Stretching both ends clears it.', 'm.levelsOk': 'Black and white points are in place.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
     'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulling it back recovers detail.', 'm.keyHi': ' The whole scene looks bright on purpose, so Fix all leaves this out.',
@@ -376,7 +379,7 @@ const STR = {
     'd.castBlue': 'blue', 'd.castYellow': 'yellow', 'd.castGreen': 'green', 'd.castMagenta': 'magenta',
     'm.sunset': 'Warm colors dominate, like sunrise or sunset. Kept warm.', 'm.wbOk': 'Highlights are close to neutral.', 'm.wbNone': 'No white reference in the frame, so this cannot be judged.',
     'm.pale': 'Colors are pale: mean saturation {s}.', 'm.heavy': 'Colors are already heavy: mean saturation {s}. Easing it slightly helps.', 'm.colorOk': 'Mean saturation {s}. Fine as it is.',
-    'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so Fix all leaves this out.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
+    'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so Fix all leaves this out.', 'm.tiltWeak': ' The line does not cross the whole frame and may not be a horizon, so Fix all leaves this out.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
     'm.midHorizon': 'The horizon sits on the middle line, which tends to look static. Try it on a third.', 'm.score': 'Scores {n} by the rules.',
     'm.look.sunset': 'Warm colors make up {w}, a sunset mood', 'm.look.duo': 'Blues {a} and warm tones {w} are complementary', 'm.look.aqua': 'Sky and water make up {a} of the color', 'm.look.green': 'Green makes up {g} of the color', 'm.look.mono': 'There is almost no color', 'm.look.mixed': 'Colors are scattered',
     'm.try': '. Try "{name}".',
@@ -405,7 +408,7 @@ const I = (k) => ({ 'data-i18n': k, text: tr(k) });
 function applyLang() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   for (const e of document.querySelectorAll('[data-i18n]')) e.textContent = tr(e.dataset.i18n);
-  for (const e of document.querySelectorAll('[data-i18n-label]')) { const v = tr(e.dataset.i18nLabel); e.setAttribute('aria-label', v); e.title = v; }
+  for (const e of document.querySelectorAll('[data-i18n-label]')) { const v = tr(e.dataset.i18nLabel); e.setAttribute('aria-label', v); if (e.tagName !== 'CANVAS') e.title = v; }
   $('#btnLang').textContent = lang === 'zh' ? 'EN' : '中';
   $('#brandCn').hidden = lang !== 'zh';
   document.title = lang === 'zh' ? '第二眼 · Second Look' : 'Second Look';
@@ -459,16 +462,24 @@ let uid = 0;
 
 const anKeyOf = (ph) => ph.id + '|' + ph.angle + '|' + (ph.subj ? ph.subj.x.toFixed(3) + ',' + ph.subj.y.toFixed(3) : '');
 const fixOn = (ph, f) => (f.id === 'level' ? ph.angle === f.angle : !!ph.fix[f.id]);
-function finalParams(ph, lookId, amt) {
-  const P = { ...ph.adjust };
-  if (ph.base) for (const f of ph.base.fixes) if (f.p && ph.fix[f.id]) for (const k in f.p) P[k] += f.p[k];
-  P.shT = [[P.shHue, P.shAmt]]; P.hiT = [[P.hiHue, P.hiAmt]];
-  const L = LOOKS.find((l) => l.id === (lookId ?? ph.look)), s = (amt ?? ph.lookAmt) / 100;
+const isSplit = (k) => /^(sh|hi)(Hue|Amt)$/.test(k);
+/* what the switched-on fixes and the chosen style add to each slider, plus the style's own tints */
+function layers(ph, lookId, amt) {
+  const add = {}; for (const k in DEF) add[k] = 0;
+  if (ph.base) for (const f of ph.base.fixes) if (f.p && ph.fix[f.id]) for (const k in f.p) add[k] += f.p[k];
+  const L = LOOKS.find((l) => l.id === (lookId ?? ph.look)), s = (amt ?? ph.lookAmt) / 100, shT = [], hiT = [];
   if (L && s > 0) {
-    for (const k in L.p) if (!/^(sh|hi)(Hue|Amt)$/.test(k)) P[k] += L.p[k] * s;
-    if (L.p.shAmt) P.shT.push([L.p.shHue, L.p.shAmt * s]);
-    if (L.p.hiAmt) P.hiT.push([L.p.hiHue, L.p.hiAmt * s]);
+    for (const k in L.p) if (!isSplit(k)) add[k] += L.p[k] * s;
+    if (L.p.saturation <= -100) add.saturation = -100; // a black-and-white style is black and white at any strength
+    if (L.p.shAmt) shT.push([L.p.shHue, L.p.shAmt * s]);
+    if (L.p.hiAmt) hiT.push([L.p.hiHue, L.p.hiAmt * s]);
   }
+  return { add, shT, hiT };
+}
+function finalParams(ph, lookId, amt) {
+  const { add, shT, hiT } = layers(ph, lookId, amt), P = { ...ph.adjust };
+  for (const k in add) if (!isSplit(k)) P[k] += add[k];
+  P.shT = [[P.shHue, P.shAmt], ...shT]; P.hiT = [[P.hiHue, P.hiAmt], ...hiT];
   return P;
 }
 
@@ -492,7 +503,7 @@ function toneCurve(i, P, gain) {
   const bp = -clamp(P.blacks, -100, 100) / 100 * 0.12, wp = 1 - clamp(P.whites, -100, 100) / 100 * 0.22;
   x = clamp((x - bp) / (wp - bp), 0, 1);
   const sh = clamp(P.shadows, -100, 100) / 100, hi = clamp(P.highlights, -100, 100) / 100;
-  x = clamp(x + sh * 1.4 * x * Math.pow(1 - x, 3) + hi * 1.4 * (1 - x) * x * x * x, 0, 1);
+  x = clamp(x + sh * (sh < 0 ? 1 : 1.4) * x * Math.pow(1 - x, 3) + hi * (hi > 0 ? 1 : 1.4) * (1 - x) * x * x * x, 0, 1);
   const p = Math.pow(2, clamp(P.contrast, -100, 100) / 100 * 0.9);
   x = x < 0.5 ? 0.5 * Math.pow(2 * x, p) : 1 - 0.5 * Math.pow(2 * (1 - x), p);
   const f = clamp(P.fade, 0, 100) / 100;
@@ -743,13 +754,14 @@ function cropFor(an, ph, key) {
     const bw = B.x1 - B.x0, bh = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
     /* what must stay inside: generous above (heads), modest at the sides, a little below */
     const px0 = Math.max(0, B.x0 - 0.3 * bw), px1 = Math.min(1, B.x1 + 0.3 * bw), py0 = Math.max(0, B.y0 - 0.3 * bh), py1 = Math.min(1, B.y1 + 0.08 * bh);
-    const fit = (pos, size, lo, hi, keepStart) => {
+    const fit = (pos, size, lo, hi, b0, b1, keepStart) => {
       if (hi - lo <= size) { if (pos > lo) pos = lo; if (pos + size < hi) pos = hi - size; }
-      else pos = keepStart ? lo : (lo + hi) / 2 - size / 2;
+      else if (b1 - b0 <= size) pos = clamp(keepStart ? lo : (lo + hi) / 2 - size / 2, b1 - size, b0); // the padding does not fit but the subject does
+      else pos = keepStart ? lo : (b0 + b1) / 2 - size / 2; // the subject itself does not fit: keep its top
       return clamp(pos, 0, 1 - size);
     };
     const s = tight ? clamp(Math.max(bh / 0.6, bw / 0.5, px1 - px0, py1 - py0), 0.5, 0.9) : 1, w = mw * s, h = mh * s;
-    return { x: fit(cx - cx * w, w, px0, px1, false), y: fit(cy - cy * h, h, py0, py1, true), w, h };
+    return { x: fit(cx - cx * w, w, px0, px1, B.x0, B.x1, false), y: fit(cy - cy * h, h, py0, py1, B.y0, B.y1, true), w, h };
   }
   let best = null;
   for (const sc of tight ? [0.9, 0.82, 0.74, 0.66, 0.6] : [1, 0.92, 0.84, 0.76, 0.68, 0.6]) {
@@ -789,13 +801,15 @@ function analyze(ph) {
   }
   const p = { pMx: percentile(histMx, n, 0.995) }; for (const [k, q] of [['p005', 0.005], ['p10', 0.1], ['p50', 0.5], ['p90', 0.9], ['p95', 0.95], ['p995', 0.995]]) p[k] = percentile(hist, n, q);
   /* white point: average of the brightest, not-too-colorful, unclipped pixels */
-  let wr = 0, wg = 0, wb = 0, wn = 0; const yT = Math.max(p.p95, 100);
+  const NB = 14, wq = new Float64Array(NB * 4), yT = Math.max(p.p95, 100); let wn = 0;
   for (let i = 0, j = 0; j < n; i += 4, j++) {
     if (lum[j] < yT) continue;
-    const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    if (mx >= 250 || (mx - mn) / mx > 0.18) continue;
-    wr += LIN[r]; wg += LIN[g]; wb += LIN[b]; wn++;
+    const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), st = (mx - mn) / mx;
+    if (mx >= 250 || st > 0.14) continue; // pale sky and sand are not white
+    const k = Math.min(NB - 1, (st * 100) | 0) * 4; wq[k]++; wq[k + 1] += LIN[r]; wq[k + 2] += LIN[g]; wq[k + 3] += LIN[b]; wn++;
   }
+  let wr = 0, wg = 0, wb = 0, wc = 0; // a real cast tints even the most neutral of them
+  for (let k = 0; k < NB * 4 && wc < wn * 0.25; k += 4) { wc += wq[k]; wr += wq[k + 1]; wg += wq[k + 2]; wb += wq[k + 3]; }
   const hues = chroTot ? { aqua: fAqua / chroTot, green: fGreen / chroTot, warm: fWarm / chroTot, chroma: chroN / n } : { aqua: 0, green: 0, warm: 0, chroma: 0 };
   let wbEst = null;
   if (wn > n * 0.008 && wr > 0 && wg > 0 && wb > 0) wbEst = { t: Math.log(wb / wr) / 0.7 * 100, n: Math.log(wg / Math.sqrt(wr * wb)) / 0.25 * 100 };
@@ -841,18 +855,16 @@ function analyze(ph) {
   const cs = new Float32Array(m); let csAvg = 0;
   for (let j = 0; j < m; j++) { cs[j] = Math.sqrt(0.5 * (sL[j] - lL[j]) ** 2 + (sA[j] - lA[j]) ** 2 + (sB[j] - lB[j]) ** 2); csAvg += cs[j]; }
   csAvg = csAvg / m || 1;
+  const br = Math.max(2, Math.round(Math.max(sw, sh) * 0.04)), blob = boxBlur(cs, sw, sh, br);
+  let pk = 0, pj = 0; for (let j = 0; j < m; j++) if (blob[j] > pk) { pk = blob[j]; pj = j; }
+  const strong = pk > csAvg * 2, auto = strong ? growBox(cs, sw, sh, pj % sw, (pj / sw) | 0, false) : null;
   let subject;
   if (ph.subj) {
-    const sx = clamp(Math.floor(ph.subj.x * sw), 0, sw - 1), sy = clamp(Math.floor(ph.subj.y * sh), 0, sh - 1);
-    const box = growBox(cs, sw, sh, sx, sy, true) || { x0: Math.max(0, ph.subj.x - 0.07), x1: Math.min(1, ph.subj.x + 0.07), y0: Math.max(0, ph.subj.y - 0.1), y1: Math.min(1, ph.subj.y + 0.1) };
-    subject = { x: ph.subj.x, y: ph.subj.y, strong: true, box };
-  } else {
-    const br = Math.max(2, Math.round(Math.max(sw, sh) * 0.04)), blob = boxBlur(cs, sw, sh, br);
-    let pk = 0, pj = 0; for (let j = 0; j < m; j++) if (blob[j] > pk) { pk = blob[j]; pj = j; }
-    const strong = pk > csAvg * 2;
-    const box = strong ? growBox(cs, sw, sh, pj % sw, (pj / sw) | 0, false) : null;
-    subject = box ? { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, strong: true, box } : { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong, box: null };
-  }
+    const t = ph.subj, sx = clamp(Math.floor(t.x * sw), 0, sw - 1), sy = clamp(Math.floor(t.y * sh), 0, sh - 1);
+    const inAuto = auto && t.x >= auto.x0 && t.x <= auto.x1 && t.y >= auto.y0 && t.y <= auto.y1;
+    const box = (inAuto ? auto : growBox(cs, sw, sh, sx, sy, true)) || { x0: Math.max(0, t.x - 0.07), x1: Math.min(1, t.x + 0.07), y0: Math.max(0, t.y - 0.1), y1: Math.min(1, t.y + 0.1) };
+    subject = { x: t.x, y: t.y, strong: true, box };
+  } else subject = auto ? { x: (auto.x0 + auto.x1) / 2, y: (auto.y0 + auto.y1) / 2, strong: true, box: auto } : { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong, box: null };
   let tot = 0; for (let j = 0; j < m; j++) tot += sal[j];
 
   const an = { hist, n, p, clipHi: clipHi / n, sat: satN ? satSum / satN : 0, hues, wbEst, pal, horizon, subject, sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
@@ -866,7 +878,8 @@ function suggestTone(an) {
   const lut = () => { const o = new Float32Array(256); for (let i = 0; i < 256; i++) o[i] = toneCurve(i, P, 1); return o; };
   const frac = (L, lo, hi) => { let s = 0; for (let i = 0; i < 256; i++) if (L[i] >= lo && L[i] <= hi) s += h[i]; return s / n; };
   const med = p.p50 / 255, flat = p.p995 - p.p005 < 12; // a blank frame has nothing to stretch
-  const night = med < 0.2, backlit = med < 0.4 && p.p95 / 255 > 0.85;
+  const backlit = med < 0.4 && p.p95 / 255 > 0.85, night = med < 0.2 && !(backlit && p.p90 / 255 > 0.5); // a big lit area means daylight
+  const dusk = an.hues.warm > 0.5 && med < 0.55;
   f.med = med; f.night = night; f.backlit = backlit; f.lo = p.p005 / 255; f.hi = p.p995 / 255; f.fracHi = 0; f.fracLo = 0;
   if (flat) return f;
   let target = med;
@@ -875,24 +888,24 @@ function suggestTone(an) {
   if (target !== med) {
     const dir = target > med ? 1 : -1; let be = 0, bd = Math.abs(med - target);
     for (let k = 1; k <= 75; k++) { P.exposure = dir * k; const dd = Math.abs(toneCurve(p.p50, P, 1) - target); if (dd < bd - 1e-6) { bd = dd; be = dir * k; } }
-    if (night) be = Math.min(be, 15); // a night scene should stay night
-    be = Math.max(be, -40);           // and a bright one is only eased down
+    if (night) be = Math.min(be, 15); else if (dusk) be = Math.min(be, 25); // night stays night, a sunset stays moody
+    be = Math.max(be, -30);
     P.exposure = Math.abs(be) >= 5 ? be : 0;
     if (P.exposure) f.exposure = P.exposure;
-    /* fog, snow and white walls are meant to be bright: only darken by default when parts are really blown out */
-    if (P.exposure < 0 && an.clipHi <= 0.03) { f.optional = true; P.exposure = 0; }
+    /* never part of Fix all: exposure cannot bring back blown whites, and snow, sand and overcast skies are meant to be bright */
+    if (P.exposure < 0) { f.optional = true; P.exposure = 0; }
   }
   let L = lut();
   const hi = L[Math.max(p.p995, p.pMx)], lo = L[p.p005];
   f.lo = lo; f.hi = hi;
   if (hi < 0.94 && !night) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
   /* a lifted black point alone (whites already in place) may be a deliberate faded look: correct it only partly */
-  if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, f.whites ? 70 : 30)); if (f.blacks > -5) delete f.blacks; }
+  if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, night ? 20 : f.whites ? 70 : 30)); if (f.blacks > -5) delete f.blacks; }
   P.whites = f.whites || 0; P.blacks = f.blacks || 0; L = lut();
   const fh = frac(L, 0.93, 2), fl = frac(L, -1, 0.09);
   f.fracHi = fh; f.fracLo = fl;
   if (fh > 0.06) f.highlights = -Math.round(clamp(18 + fh * 220, 18, 60));
-  if (!night && (fl > 0.14 || backlit)) f.shadows = Math.round(clamp(15 + fl * 110 + (backlit ? 12 : 0), 15, 55));
+  if (!night && !dusk && (fl > 0.14 || backlit)) f.shadows = Math.round(clamp(15 + fl * 110 + (backlit ? 12 : 0), 15, 55));
   P.highlights = f.highlights || 0; P.shadows = f.shadows || 0; L = lut();
   const spread = L[p.p90] - L[p.p10];
   if (spread < 0.36 && !night) f.contrast = Math.round(clamp((0.44 - spread) * 130, 8, 26));
@@ -905,7 +918,7 @@ function makeBase(an) {
   if (t.exposure) fixes.push({ id: t.exposure > 0 ? 'brighten' : 'darken', p: { exposure: t.exposure }, on: !t.optional });
   const lv = {}; for (const k of ['whites', 'blacks', 'contrast']) if (t[k]) lv[k] = t[k];
   if (Object.keys(lv).length) fixes.push({ id: 'haze', p: lv, on: true });
-  if (t.highlights || an.clipHi > 0.02) fixes.push({ id: 'highlights', p: { highlights: t.highlights || -30 }, on: !t.optional });
+  if (t.highlights || an.clipHi > 0.02) fixes.push({ id: 'highlights', p: { highlights: t.highlights || -30 }, on: an.clipHi > 0.02 || !t.optional });
   if (t.shadows) fixes.push({ id: 'shadows', p: { shadows: t.shadows }, on: true });
   const sunset = an.hues.warm > 0.5 && t.med < 0.55, wb = an.wbEst;
   if (!sunset && wb && (Math.abs(wb.t) > 9 || Math.abs(wb.n) > 12)) {
@@ -913,12 +926,12 @@ function makeBase(an) {
     if (Math.abs(tt) >= 4) p.temp = tt; if (Math.abs(nn) >= 4) p.tint = nn;
     const id = Math.abs(wb.t) > 9 ? (wb.t > 0 ? 'castBlue' : 'castYellow') : (wb.n > 0 ? 'castGreen' : 'castMagenta');
     /* a cool cast is nearly always a fault; a mild warm one is often the mood, so it is offered but left off */
-    if (Object.keys(p).length) fixes.push({ id, p, on: wb.t > 12 || wb.t < -28 || Math.abs(wb.n) > 16 });
+    if (Object.keys(p).length) fixes.push({ id, p, on: id === 'castBlue' ? wb.t > 12 : id !== 'castYellow' && Math.abs(wb.n) > 16 });
   }
   if (an.sat < 0.2 && an.hues.chroma > 0.05) fixes.push({ id: 'richer', p: { vibrance: Math.round(clamp((0.3 - an.sat) * 200, 10, 28)) }, on: true });
   else if (an.sat > 0.62) fixes.push({ id: 'calmer', p: { saturation: -10 }, on: true });
   const hz = an.horizon;
-  if (hz.found && Math.abs(hz.deg) >= 0.4) fixes.push({ id: 'level', angle: clamp(Math.round(-hz.deg * 10) / 10, -15, 15), on: Math.abs(hz.deg) <= 5 });
+  if (hz.found && Math.abs(hz.deg) >= 0.4) fixes.push({ id: 'level', angle: clamp(Math.round(-hz.deg * 10) / 10, -15, 15), weak: hz.span < 0.7, on: Math.abs(hz.deg) <= 5 && hz.span >= 0.7 }); // only a line right across the frame is trusted
   const h = an.hues;
   const why = sunset ? 'sunset' : h.aqua > 0.45 ? (h.warm > 0.12 ? 'duo' : 'aqua') : h.green > 0.4 ? 'green' : h.chroma < 0.05 ? 'mono' : 'mixed';
   const look = { sunset: 'golden', duo: 'tealorange', aqua: 'clear', green: 'jungle', mono: 'bw', mixed: 'film' }[why];
@@ -946,14 +959,13 @@ function initPhoto(ph) {
 
 /* ================= sample ================= */
 /* Moraine Lake, Banff National Park. Photo by Gorgo (Wikimedia Commons), released into the public domain by the author.
-   It is shown shot badly on purpose (tilted, dark, flat and too cool) so there is something to fix. */
+   It is shown shot badly on purpose (dark, flat and too cool) so there is something to fix. */
 async function makeSample() {
   const img = new Image(); img.src = SAMPLE_SRC; await img.decode();
   const iw = img.naturalWidth, ih = img.naturalHeight, W = 1400, H = Math.round(1400 * ih / iw);
   const c = mk(W, H), x = c.getContext('2d', { willReadFrequently: true });
-  const a = 2.4 * Math.PI / 180, k = Math.max((W * Math.cos(a) + H * Math.sin(a)) / iw, (W * Math.sin(a) + H * Math.cos(a)) / ih); // zoom so no corner is empty
   x.imageSmoothingQuality = 'high';
-  x.translate(W / 2, H / 2); x.rotate(a); x.drawImage(img, -iw * k / 2, -ih * k / 2, iw * k, ih * k); x.setTransform(1, 0, 0, 1, 0, 0);
+  x.drawImage(img, 0, 0, W, H);
   let seed = 20261112; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const id = x.getImageData(0, 0, W, H), d = id.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -1005,15 +1017,18 @@ async function ensureProxy(ph) {
   }
 }
 function prepare(ph) { ph.thumb0 = mk(TW, TH); cover(ph.thumb0.getContext('2d'), ph.proxy); initPhoto(ph); gradeThumb(ph); }
-let adding = false;
+let adding = false; const pending = [];
 async function addFiles(files) {
-  const list = [...files].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif|avif|gif|bmp)$/i.test(f.name));
-  if (!list.length || adding) return;
+  const all = [...files], list = all.filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif|avif|gif|bmp)$/i.test(f.name));
+  if (!list.length) { if (all.length && !adding) toast(tr('t.bad', { n: all.length }), 4000); return; }
+  pending.push(...list);
+  if (adding) return; // the running loop picks these up
   adding = true;
   let first = true, failed = 0, heic = 0, done = 0, ok = 0;
   try {
-    for (const f of list) {
-      toast(tr('t.reading', { i: ++done, n: list.length }), 0);
+    while (pending.length) {
+      const f = pending.shift();
+      toast(tr('t.reading', { i: ++done, n: done + pending.length }), 0);
       const ph = newPhoto(f.name); ph.file = f;
       try { await ensureProxy(ph); prepare(ph); } catch (e) { failed++; if (/hei[cf]/i.test(f.name + f.type)) heic++; continue; }
       if (state.photos.length === 1 && state.photos[0].sample) { state.photos = []; state.cur = -1; }
@@ -1026,15 +1041,20 @@ async function addFiles(files) {
   else toast(tr('t.added', { n: ok }), 1800);
   renderStrip();
 }
-let selectSeq = 0;
+let selectSeq = 0, decoding = Promise.resolve();
 async function select(i) {
   const ph = state.photos[i]; if (!ph) return;
-  const seq = ++selectSeq;
-  try { await ensureProxy(ph); } catch (e) { toast(tr('t.read'), 3000); return; }
-  if (seq !== selectSeq || !state.photos.includes(ph)) return; // a later click won
+  const seq = ++selectSeq, tb = $('#thumbs').children[i];
+  if (!ph.proxy && tb) tb.setAttribute('aria-busy', 'true'); // answer the tap at once
+  const turn = decoding.then(async () => { if (seq === selectSeq) await ensureProxy(ph); }); // one full-size decode at a time
+  decoding = turn.catch(() => {});
+  try { await turn; } catch (e) { if (tb) tb.removeAttribute('aria-busy'); if (seq === selectSeq) toast(tr('t.read'), 3000); return; }
+  if (seq !== selectSeq || !state.photos.includes(ph) || !ph.proxy) return; // a later tap won
   state.cur = state.photos.indexOf(ph); geomKey = '';
   if (!ph.base) prepare(ph);
   renderStrip(); renderPanels(); render(false);
+  const box = $('#thumbs'), b = box.children[state.cur];
+  if (b) { const br = box.getBoundingClientRect(), r = b.getBoundingClientRect(); if (r.left < br.left || r.right > br.right) box.scrollLeft += r.left - br.left - (br.width - r.width) / 2; }
 }
 
 /* ================= rendering ================= */
@@ -1172,7 +1192,7 @@ function renderStrip() {
     box.append(b);
   });
   const many = state.photos.filter((p) => !p.sample).length > 1;
-  $('#btnExportAll').hidden = !many; $('#btnSync').hidden = !many; $('#btnFixEvery').hidden = !many;
+  $('#btnExportAll').hidden = !many || !canZip; $('#btnSync').hidden = !many; $('#btnFixEvery').hidden = !many;
 }
 function renderMeta() {
   const ph = cur(), m = $('#meta'); m.textContent = ''; if (!ph) return;
@@ -1201,7 +1221,7 @@ function buildFindings(ph) {
   f = F('richer', 'calmer');
   out.push(f ? { title: 'f.color', fix: f, msg: tr(f.id === 'richer' ? 'm.pale' : 'm.heavy', { s: pct(m.sat) }) } : { title: 'f.color', msg: tr('m.colorOk', { s: pct(m.sat) }) });
   f = F('level');
-  if (f) out.push({ title: 'f.horizon', fix: f, msg: tr(m.horizon.deg > 0 ? 'm.tiltR' : 'm.tiltL', { d: Math.abs(m.horizon.deg).toFixed(1) }) + (f.on ? '' : tr('m.tiltBig')) });
+  if (f) out.push({ title: 'f.horizon', fix: f, msg: tr(m.horizon.deg > 0 ? 'm.tiltR' : 'm.tiltL', { d: Math.abs(m.horizon.deg).toFixed(1) }) + (f.on ? '' : tr(f.weak ? 'm.tiltWeak' : 'm.tiltBig')) });
   else out.push({ title: 'f.horizon', msg: tr(m.horizon.found ? 'm.level' : 'm.noHorizon') });
   if (ph.an && ph.anKey === anKeyOf(ph)) { /* composition is judged on the frame as it is now */
     const hz = ph.an.horizon, hy = hz.found ? (hz.pos - ph.crop.y) / ph.crop.h : -1, mid = Math.abs(hy - 0.5) < 0.075;
@@ -1222,7 +1242,7 @@ function renderDiag() {
       el('div', { class: 't' }, tr(r.title), tag ? el('small', { text: tr(tag) }) : null));
     if (sw) row.append(el('button', { class: 'sw', role: 'switch', 'aria-checked': String(on), 'aria-label': tr(r.title), onclick: () => {
       if (r.look) ph.look = on ? 'none' : r.look;
-      else if (r.fix.id === 'level') ph.angle = on ? 0 : r.fix.angle;
+      else if (r.fix.id === 'level') { ph.angle = on ? 0 : r.fix.angle; ph.subj = null; }
       else ph.fix[r.fix.id] = !on;
       afterEdit();
     } }));
@@ -1251,7 +1271,7 @@ function buildSliders() {
     for (const [k, cls, min, max] of g.items) {
       const inp = el('input', { type: 'range', id: 's-' + k, min: min ?? -100, max: max ?? 100, step: 1, value: DEF[k], class: cls || '' });
       const out = el('output', { class: 'num' });
-      inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value; out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
+      inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value - (isSplit(k) ? 0 : layers(ph).add[k]); out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
       inp.addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = DEF[k]; afterEdit(); });
       sliderEls[k] = [inp, out];
       grp.append(el('div', { class: 'row' }, el('label', { for: 's-' + k, ...I('s.' + k) }), out, inp));
@@ -1262,7 +1282,8 @@ function buildSliders() {
 }
 function syncControls() {
   const ph = cur(); if (!ph) return;
-  for (const k in sliderEls) { const [inp, out] = sliderEls[k]; inp.value = ph.adjust[k]; out.textContent = fmtParam(k, ph.adjust[k]); if (!inp.className) setFill(inp); }
+  const add = layers(ph).add; // each slider shows fixes + style + your own change, so a style demonstrates itself
+  for (const k in sliderEls) { const [inp, out] = sliderEls[k], v = Math.round(ph.adjust[k] + (isSplit(k) ? 0 : add[k])); inp.value = v; out.textContent = fmtParam(k, v); if (!inp.className) setFill(inp); }
   $('#s-lookAmt').value = ph.lookAmt; $('#o-lookAmt').textContent = ph.lookAmt; setFill($('#s-lookAmt'));
   $('#s-angle').value = ph.angle; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill($('#s-angle'));
   for (const b of document.querySelectorAll('#looks .tile')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.look));
@@ -1322,13 +1343,15 @@ function renderCrops() {
   box.textContent = '';
   const an = curAn(ph); if (state.tab !== 'crop' || !an) return;
   const { fw, fh } = frameDims(ph.w, ph.h, ph.angle);
-  for (const s of [{ key: 'full', aspect: 'free', rect: FULL }, ...an.crops]) {
+  const list = [{ key: 'full', aspect: 'free', rect: FULL }, ...an.crops];
+  const exact = list.find((t) => t.aspect === ph.aspect && sameRect(ph.crop, t.rect)) || list.find((t) => sameRect(ph.crop, t.rect)); // one tile at most
+  for (const s of list) {
     const ar = (s.rect.w * fw) / (s.rect.h * fh), cw = ar >= 4 / 3 ? 160 : Math.max(8, Math.round(120 * ar)), chh = ar >= 4 / 3 ? Math.max(8, Math.round(160 / ar)) : 120;
     const c = mk(cw, chh), x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
     c.style.width = Math.min(100, ar / (4 / 3) * 100) + '%'; c.style.height = 'auto';
     x.drawImage(procC, s.rect.x * procC.width, s.rect.y * procC.height, s.rect.w * procC.width, s.rect.h * procC.height, 0, 0, cw, chh);
     const label = s.key === 'full' || s.key === 'tight' ? el('span', I('cr.' + s.key)) : el('span', { text: s.key });
-    box.append(el('button', { class: 'tile', 'aria-pressed': String(sameRect(ph.crop, s.rect)), onclick: () => { ph.aspect = s.aspect; ph.crop = { ...s.rect }; syncControls(); cropChanged(); } },
+    box.append(el('button', { class: 'tile', 'aria-pressed': String(s === exact), onclick: () => { ph.aspect = s.aspect; ph.crop = { ...s.rect }; syncControls(); cropChanged(); } },
       el('div', { class: 'pic' }, c), label));
   }
 }
@@ -1339,6 +1362,12 @@ function renderMeters() {
     box.append(el('span', { text: tr(k) }), el('div', { class: 'meter' }, el('i', { style: `width:${v === null ? 0 : Math.round(v * 100)}%` })), el('span', { class: 'num', text: v === null ? '—' : String(Math.round(v * 100)) }));
 }
 function cropChanged() { paint(); renderCrops(); renderMeters(); renderMeta(); }
+const keepFocus = (sel, fn) => () => {
+  const box = $(sel), i = [...box.querySelectorAll('button')].indexOf(document.activeElement);
+  fn();
+  if (i >= 0) { const b = box.querySelectorAll('button')[i]; if (b) b.focus({ preventScroll: true }); }
+};
+renderStrip = keepFocus('#thumbs', renderStrip); renderDiag = keepFocus('#findings', renderDiag); renderCrops = keepFocus('#crops', renderCrops);
 function renderPanels() { renderDiag(); buildLooks(); syncControls(); renderCrops(); renderMeters(); renderMeta(); }
 function afterEdit() { renderDiag(); syncControls(); render(false); }
 
@@ -1386,11 +1415,11 @@ view.addEventListener('pointermove', (e) => {
       const ax = hx < 0 ? x1 : x0, ay = hy < 0 ? y1 : y0, cxm = (x0 + x1) / 2, cym = (y0 + y1) / 2;
       let w, maxW;
       if (hx && hy) { w = Math.max(Math.abs(nx - ax), Math.abs(ny - ay) * rN); maxW = Math.min(hx < 0 ? ax : 1 - ax, (hy < 0 ? ay : 1 - ay) * rN); }
-      else if (hx) { w = Math.abs(nx - ax); maxW = Math.min(hx < 0 ? ax : 1 - ax, 2 * Math.min(cym, 1 - cym) * rN); }
-      else { w = Math.abs(ny - ay) * rN; maxW = Math.min((hy < 0 ? ay : 1 - ay) * rN, 2 * Math.min(cxm, 1 - cxm)); }
+      else if (hx) { w = Math.abs(nx - ax); maxW = Math.min(hx < 0 ? ax : 1 - ax, rN); }
+      else { w = Math.abs(ny - ay) * rN; maxW = Math.min((hy < 0 ? ay : 1 - ay) * rN, 1); }
       w = clamp(w, Math.min(minW, maxW), maxW); const h = w / rN;
-      if (hx) { x0 = hx < 0 ? ax - w : ax; } else x0 = cxm - w / 2;
-      if (hy) { y0 = hy < 0 ? ay - h : ay; } else y0 = cym - h / 2;
+      if (hx) { x0 = hx < 0 ? ax - w : ax; } else x0 = clamp(cxm - w / 2, 0, 1 - w); // slides off a side it touches
+      if (hy) { y0 = hy < 0 ? ay - h : ay; } else y0 = clamp(cym - h / 2, 0, 1 - h);
       x1 = x0 + w; y1 = y0 + h;
     }
   }
@@ -1401,7 +1430,11 @@ view.addEventListener('pointermove', (e) => {
 const endDrag = (e) => {
   if (!drag || e.pointerId !== drag.id) return;
   const d = drag, ph = cur(); drag = null;
-  if (e.type === 'pointerup' && !d.moved && !d.hx && !d.hy && ph && d.nx0 >= 0 && d.nx0 <= 1 && d.ny0 >= 0 && d.ny0 <= 1) { ph.subj = { x: d.nx0, y: d.ny0 }; render(false); return; }
+  if (e.type === 'pointerup' && !d.moved && ph && d.nx0 >= 0 && d.nx0 <= 1 && d.ny0 >= 0 && d.ny0 <= 1) {
+    const B = ph.subj && curAn(ph) ? ph.an.subject.box : null; // a tap on the marked subject un-marks it
+    ph.subj = B && d.nx0 >= B.x0 && d.nx0 <= B.x1 && d.ny0 >= B.y0 && d.ny0 <= B.y1 ? null : { x: d.nx0, y: d.ny0 };
+    render(false); return;
+  }
   renderCrops(); renderMeters();
 };
 view.addEventListener('pointerup', endDrag); view.addEventListener('pointercancel', endDrag);
@@ -1418,15 +1451,15 @@ function setTab(t) {
 }
 for (const k of TABS) $('#tab-' + k).addEventListener('click', () => setTab(k));
 
-$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.lookAmt = +e.target.value; $('#o-lookAmt').textContent = ph.lookAmt; setFill(e.target); render(true); });
-$('#s-angle').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.angle = +e.target.value; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill(e.target); render(true); });
+$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.lookAmt = +e.target.value; syncControls(); render(true); });
+$('#s-angle').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.angle = +e.target.value; ph.subj = null; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill(e.target); render(true); });
 $('#s-angle').addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.angle = 0; afterEdit(); });
 const levelFix = (ph) => (ph.base ? ph.base.fixes.find((f) => f.id === 'level') : null);
 $('#btnLevel').addEventListener('click', () => {
   const ph = cur(); if (!ph) return; const f = levelFix(ph);
   if (!f) return toast(tr(ph.base && ph.base.m.horizon.found ? 't.level' : 't.noHorizon'));
   if (ph.angle === f.angle) return toast(tr('t.level'));
-  ph.angle = f.angle; afterEdit();
+  ph.angle = f.angle; ph.subj = null; afterEdit();
 });
 $('#btnResetCrop').addEventListener('click', () => { const ph = cur(); if (!ph) return; const f = levelFix(ph); ph.angle = f && ph.angle === f.angle ? f.angle : 0; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.subj = null; afterEdit(); });
 $('#btnResetColor').addEventListener('click', () => { const ph = cur(); if (!ph) return; ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; afterEdit(); });
@@ -1488,6 +1521,9 @@ async function renderFull(ph, onProg) {
   return blob;
 }
 const outName = (ph) => (ph.sample ? 'sample' : ph.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '_') || 'photo') + '-secondlook.jpg';
+/* in-app browsers that ignore downloads: show the picture to long-press instead */
+const noAnchorDl = !('download' in HTMLAnchorElement.prototype) || /MicroMessenger|Weibo|\bQQ\/|AlipayClient|DingTalk|FBAN|FBAV|Instagram|\bLine\//i.test(navigator.userAgent);
+let canZip = !noAnchorDl; dlP.then((d) => { if (window.claude) { canZip = !!d; renderStrip(); } });
 async function saveBlob(blob, filename) {
   const dl = await dlP;
   if (dl) {
@@ -1495,13 +1531,14 @@ async function saveBlob(blob, filename) {
     catch (e) { if (e && (e.code === 'declined' || e.code === 'rate_limited')) { toast(tr(e.code === 'declined' ? 't.cancel' : 't.wait')); return; } }
   }
   const url = URL.createObjectURL(blob);
-  if (!window.claude) {
+  if (!window.claude && !noAnchorDl) {
     const a = el('a', { href: url, download: filename }); document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000); toast(tr('t.saved'), 3000); return;
   }
   if (/\.zip$/.test(filename)) { URL.revokeObjectURL(url); toast(tr('t.zip'), 4000); return; }
-  $('#sheetImg').src = url; $('#sheet').hidden = false;
+  $('#sheetImg').src = url; $('#sheet').hidden = false; $('#sheetClose').focus();
 }
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden) $('#sheetClose').click(); });
 $('#sheetClose').addEventListener('click', () => { $('#sheet').hidden = true; URL.revokeObjectURL($('#sheetImg').src); $('#sheetImg').removeAttribute('src'); });
 let busy = false;
 function setBusy(v) { busy = v; $('#btnExport').disabled = v; $('#btnExportAll').disabled = v; if (!v) { $('#btnExport').textContent = tr('save'); $('#btnExportAll').textContent = tr('saveAll'); } }
@@ -1535,7 +1572,7 @@ function zipStore(files) { /* [{name, bytes}] → Blob, stored without compressi
 }
 $('#btnExportAll').addEventListener('click', async () => {
   if (busy) return;
-  if (window.claude && !(await dlP)) return toast(tr('t.zip'), 4000);
+  if (!canZip) return toast(tr('t.zip'), 4000);
   setBusy(true);
   const list = state.photos.filter((p) => !p.sample), files = [], names = new Set(); let failed = 0;
   for (let i = 0; i < list.length; i++) {
