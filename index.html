@@ -71,8 +71,8 @@ button, input { font: inherit; color: inherit; }
 .brand { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .brand .wm { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 24px; letter-spacing: -0.01em; line-height: 1; }
 .brand .cn { font-size: 14px; font-weight: 600; letter-spacing: 0.14em; color: var(--muted); }
-.meta { flex: 1 1 160px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meta b { color: var(--fg); font-weight: 500; font-family: var(--sans); font-size: 13px; margin-right: 10px; }
+.meta { flex: 1 1 160px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; display: flex; align-items: baseline; }
+.meta b { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); font-weight: 500; font-family: var(--sans); font-size: 13px; margin-right: 10px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 
 .btn {
@@ -139,16 +139,17 @@ h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color
 .finding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 .finding[data-s="tip"] .dot { background: var(--tip); border-radius: 2px; }
 .finding[data-s="warn"] .dot { background: var(--warn); border-radius: 0; transform: rotate(45deg); }
+.finding[data-s="na"] .dot { background: var(--line); }
 .finding .t { font-weight: 600; }
 .finding .t small { font-weight: 400; color: var(--muted); margin-left: 8px; font-size: 12px; }
 .finding[data-s="tip"] .t small { color: var(--tip); }
 .finding[data-s="warn"] .t small { color: var(--warn); }
 .finding .m { grid-column: 2 / 4; margin: 0; color: var(--muted); font-size: 13px; }
 .finding .fix { grid-column: 2 / 4; color: var(--fg); }
-.sw { flex: none; width: 38px; height: 22px; padding: 0; border: 0; border-radius: 11px; background: var(--line); position: relative; cursor: pointer; }
-.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--raise); box-shadow: 0 0 0 1px var(--line); }
-.sw[aria-checked="true"] { background: var(--accent); }
-.sw[aria-checked="true"]::after { left: 18px; box-shadow: none; }
+.sw { flex: none; width: 38px; height: 22px; padding: 0; border: 0; border-radius: 11px; background: var(--line); position: relative; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--muted); }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); }
+.sw[aria-checked="true"] { background: var(--accent); box-shadow: none; }
+.sw[aria-checked="true"]::after { left: 18px; background: var(--raise); }
 .swatches { display: flex; height: 24px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
 .swatches span { min-width: 6px; }
 
@@ -162,6 +163,7 @@ input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius:
 input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--trk); }
 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
 input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
+input[type="range"]:disabled { opacity: 0.4; cursor: default; }
 input.t-temp { --trk: linear-gradient(to right, #4f8fe6, #b9bcbc, #e8a53a); }
 input.t-tint { --trk: linear-gradient(to right, #46b76a, #b9bcbc, #cf5fc0); }
 input.t-hue { --trk: linear-gradient(to right, #e05555, #d8c043, #4fbf6a, #43c4cf, #4f6fe6, #c455d8, #e05555); }
@@ -328,17 +330,17 @@ const STR = {
     reset: '重置这张', resetColor: '重置调色', resetCrop: '重置裁剪', autoLevel: '自动摆正', strength: '风格强度', applyAll: '把调色用到全部照片', close: '关闭', go: '去看看',
     'h.palette': '画面主色', 'h.style': '风格', 'h.ratio': '比例', 'h.guides': '构图参考线', 'h.crops': '建议裁剪', 'h.now': '当前构图',
     'hint.subject': '黄色虚线框是算出来的主体，认错了就点一下照片上真正的主体。',
-    'lead.todo': '发现 {n} 处可以改进', 'lead.n': '已修正 {n} 处', 'lead.none': '不用修正', fixAll: '一键修正', undoAll: '全部撤销', fixEvery: '全部照片一键修正', 't.fixedN': '已修正 {n} 张',
+    'lead.todo': '发现 {n} 处可以改进', 'lead.todo1': '发现 1 处可以改进', 'lead.n': '已修正 {n} 处', 'lead.none': '不用修正', fixAll: '一键修正', undoAll: '全部撤销', fixEvery: '全部照片一键修正', 't.fixedN': '已修正 {n} 张',
     'tag.fixed': '已修正', 'tag.opt': '可选', 'tag.ok': '没问题', 'tag.tip': '建议', 'tag.on': '已套用',
     'f.exposure': '曝光', 'f.levels': '层次', 'f.highlights': '高光', 'f.shadows': '阴影', 'f.wb': '白平衡', 'f.color': '色彩', 'f.horizon': '地平线', 'f.comp': '构图', 'f.style': '风格',
     'm.dark': '整体偏暗，中位亮度 {m}，舒适区约 40–60%。', 'm.bright': '整体偏亮，中位亮度 {m}，舒适区约 40–60%。',
-    'm.highkey': '雪、沙滩、阴天这类场景本来就该亮，所以一键修正不包含它。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
+    'm.highkey': '雪、沙滩、阴天这类场景本来就该亮，所以一键修正不包含它。', 'm.night': '像夜景，只小幅提亮。', 'm.dusk': '像日出日落，暗一点才有气氛，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
     'm.expOk': '中位亮度 {m}，不用动。',
-    'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。', 'm.flatMid': '黑白场到位，但中间调挤在一起，加一点对比度拉开。',
+    'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。', 'm.hazeLo': '黑色发灰：最暗处只到 {lo}，把黑场压下去。', 'm.hazeHi': '亮部发闷：最亮处只到 {hi}，把白场提上去。', 'm.flatMid': '黑白场到位，但中间调挤在一起，加一点对比度拉开。',
     'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以一键修正不包含它。',
     'm.shadows': '暗部占 {f}，提一点看清细节。', 'm.backlit2': '逆光，把暗处提亮。',
     'm.cast': '最亮的区域本该是白色，现在{dir}，按七成校正。', 'm.warmMood': '偏色不重，轻微的暖调常常是氛围，所以一键修正不包含它。',
-    'd.castBlue': '偏蓝', 'd.castYellow': '偏黄', 'd.castGreen': '偏绿', 'd.castMagenta': '偏洋红',
+    'm.mildCast': '偏色不重，所以一键修正不包含它。', 'd.castBlue': '偏蓝', 'd.castYellow': '偏黄', 'd.castGreen': '偏绿', 'd.castMagenta': '偏洋红',
     'm.sunset': '暖色占主导，像日出日落，保留暖调。', 'm.wbOk': '亮部接近中性，没有明显色偏。', 'm.wbNone': '画面里找不到白色参照，无法判断。',
     'm.pale': '颜色偏淡，平均饱和度 {s}。', 'm.heavy': '颜色已经很浓，平均饱和度 {s}，略收一点。', 'm.colorOk': '平均饱和度 {s}，浓淡合适。',
     'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以一键修正不包含它。', 'm.tiltWeak': '这条线没有横跨整个画面，不一定是地平线，所以一键修正不包含它。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
@@ -369,17 +371,17 @@ const STR = {
     reset: 'Reset photo', resetColor: 'Reset color', resetCrop: 'Reset crop', autoLevel: 'Level the horizon', strength: 'Style strength', applyAll: 'Apply color to all photos', close: 'Close', go: 'Open crop',
     'h.palette': 'Palette', 'h.style': 'Style', 'h.ratio': 'Shape', 'h.guides': 'Composition guides', 'h.crops': 'Suggested crops', 'h.now': 'This framing',
     'hint.subject': 'The dashed yellow box is the detected subject. If it is wrong, tap the real subject on the photo.',
-    'lead.todo': '{n} things to improve', 'lead.n': '{n} fixed', 'lead.none': 'Nothing to fix', fixAll: 'Fix all', undoAll: 'Undo all', fixEvery: 'Fix every photo', 't.fixedN': 'Fixed {n} photos',
+    'lead.todo': '{n} things to improve', 'lead.todo1': '1 thing to improve', 'lead.n': '{n} fixed', 'lead.none': 'Nothing to fix', fixAll: 'Fix all', undoAll: 'Undo all', fixEvery: 'Fix every photo', 't.fixedN': 'Fixed {n} photos',
     'tag.fixed': 'fixed', 'tag.opt': 'optional', 'tag.ok': 'fine', 'tag.tip': 'suggestion', 'tag.on': 'applied',
     'f.exposure': 'Exposure', 'f.levels': 'Tonal range', 'f.highlights': 'Highlights', 'f.shadows': 'Shadows', 'f.wb': 'White balance', 'f.color': 'Color', 'f.horizon': 'Horizon', 'f.comp': 'Composition', 'f.style': 'Style',
     'm.dark': 'Dark overall: median brightness {m}; about 40–60% is comfortable.', 'm.bright': 'Bright overall: median brightness {m}; about 40–60% is comfortable.',
-    'm.highkey': ' Snow, sand or an overcast sky are meant to be bright, so Fix all leaves this out.', 'm.night': ' It looks like a night scene, so the lift is small.', 'm.backlit': ' The highlights are already bright (backlit), so the lift is small.',
+    'm.highkey': ' Snow, sand or an overcast sky are meant to be bright, so Fix all leaves this out.', 'm.night': ' It looks like a night scene, so the lift is small.', 'm.dusk': ' It looks like sunrise or sunset, where a darker frame is the mood, so the lift is small.', 'm.backlit': ' The highlights are already bright (backlit), so the lift is small.',
     'm.expOk': 'Median brightness {m}. Nothing to change.',
-    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Stretching both ends clears it.', 'm.levelsOk': 'Black and white points are in place.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
+    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Stretching both ends clears it.', 'm.levelsOk': 'Black and white points are in place.', 'm.hazeLo': 'Blacks look gray: the darkest point is {lo}. Setting the black point clears it.', 'm.hazeHi': 'Highlights look dull: the brightest point is {hi}. Raising the white point clears it.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
     'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulling it back recovers detail.', 'm.keyHi': ' The whole scene looks bright on purpose, so Fix all leaves this out.',
     'm.shadows': '{f} of the frame is very dark; lifting it shows detail.', 'm.backlit2': 'Backlit: lift the dark areas.',
     'm.cast': 'The brightest areas should be white but look {dir}. The fix removes 70% of it.', 'm.warmMood': ' The cast is mild, and a slightly warm tone is often the mood, so Fix all leaves this out.',
-    'd.castBlue': 'blue', 'd.castYellow': 'yellow', 'd.castGreen': 'green', 'd.castMagenta': 'magenta',
+    'm.mildCast': ' The cast is mild, so Fix all leaves this out.', 'd.castBlue': 'blue', 'd.castYellow': 'yellow', 'd.castGreen': 'green', 'd.castMagenta': 'magenta',
     'm.sunset': 'Warm colors dominate, like sunrise or sunset. Kept warm.', 'm.wbOk': 'Highlights are close to neutral.', 'm.wbNone': 'No white reference in the frame, so this cannot be judged.',
     'm.pale': 'Colors are pale: mean saturation {s}.', 'm.heavy': 'Colors are already heavy: mean saturation {s}. Easing it slightly helps.', 'm.colorOk': 'Mean saturation {s}. Fine as it is.',
     'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so Fix all leaves this out.', 'm.tiltWeak': ' The line does not cross the whole frame and may not be a horizon, so Fix all leaves this out.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
@@ -410,7 +412,8 @@ const tr = (k, v) => { let s = STR[lang][k] ?? STR.en[k] ?? k; if (v) for (const
 const I = (k) => ({ 'data-i18n': k, text: tr(k) });
 function applyLang() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  for (const e of document.querySelectorAll('[data-i18n]')) e.textContent = tr(e.dataset.i18n);
+  for (const e of document.querySelectorAll('[data-i18n]')) if (!e.disabled || !/^btnExport/.test(e.id)) e.textContent = tr(e.dataset.i18n); // a save in progress keeps its progress label
+  $('#toast').hidden = true; // it was written in the other language
   for (const e of document.querySelectorAll('[data-i18n-label]')) { const v = tr(e.dataset.i18nLabel); e.setAttribute('aria-label', v); if (e.tagName !== 'CANVAS') e.title = v; }
   $('#btnLang').textContent = lang === 'zh' ? 'EN' : '中';
   $('#brandCn').hidden = lang !== 'zh';
@@ -500,7 +503,7 @@ function wbGains(P) {
 function toneCurve(i, P, gain) {
   const ev = Math.pow(2, P.exposure / 50), g = gain * Math.max(ev, 1);
   let l0 = LIN[i];
-  if (ev < 1) l0 = ev * l0 / (1 - (1 - ev) * l0); // darkening pulls the midtones down but leaves white white
+  if (ev < 1) l0 = Math.min(1, ev * l0 / (1 - (1 - ev) * l0)); // darkening pulls the midtones down but leaves white white (rounding can land a hair above 1, and pow of a negative is NaN)
   const l = g >= 1 ? 1 - Math.pow(1 - l0, g) : l0 * g; // brightening keeps a soft shoulder
   let x = toSrgb(l);
   const bp = -clamp(P.blacks, -100, 100) / 100 * 0.12, wp = 1 - clamp(P.whites, -100, 100) / 100 * 0.22;
@@ -864,29 +867,30 @@ function analyze(ph) {
   csAvg = csAvg / m || 1;
   const br = Math.max(2, Math.round(Math.max(sw, sh) * 0.04)), blob = boxBlur(cs, sw, sh, br);
   let pk = 0, pj = 0; for (let j = 0; j < m; j++) if (blob[j] > pk) { pk = blob[j]; pj = j; }
-  const strong = pk > csAvg * 2, auto = strong ? growBox(cs, sw, sh, pj % sw, (pj / sw) | 0, false) : null;
+  const strong = pk > csAvg * 2 && pk > 6; // the floor keeps border bias on a smooth gradient from counting
+  const auto = strong ? growBox(cs, sw, sh, pj % sw, (pj / sw) | 0, false) : null;
   let subject;
   if (ph.subj) {
     const t = ph.subj, sx = clamp(Math.floor(t.x * sw), 0, sw - 1), sy = clamp(Math.floor(t.y * sh), 0, sh - 1);
     const inAuto = auto && t.x >= auto.x0 && t.x <= auto.x1 && t.y >= auto.y0 && t.y <= auto.y1;
     const box = (inAuto ? auto : growBox(cs, sw, sh, sx, sy, true)) || { x0: Math.max(0, t.x - 0.07), x1: Math.min(1, t.x + 0.07), y0: Math.max(0, t.y - 0.1), y1: Math.min(1, t.y + 0.1) };
     subject = { x: t.x, y: t.y, strong: true, box };
-  } else subject = auto ? { x: (auto.x0 + auto.x1) / 2, y: (auto.y0 + auto.y1) / 2, strong: true, box: auto } : { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong, box: null };
+  } else subject = auto ? { x: (auto.x0 + auto.x1) / 2, y: (auto.y0 + auto.y1) / 2, strong: true, box: auto } : { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong: false, box: null }; // a peak that is not a compact thing is not a subject
   let tot = 0; for (let j = 0; j < m; j++) tot += sal[j];
 
   const an = { hist, n, p, clipHi: clipHi / n, sat: satN ? satSum / satN : 0, hues, wbEst, pal, horizon, subject, sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
-  an.tone = suggestTone(an);
   an.crops = suggestCrops(an, ph);
   return an;
 }
 
-function suggestTone(an) {
+/* st says which earlier links of the chain are switched on: each fix is sized for the photo as it stands now */
+function suggestTone(an, st) {
   const P = { ...DEF }, f = {}, h = an.hist, n = an.n, p = an.p;
   const lut = () => { const o = new Float32Array(256); for (let i = 0; i < 256; i++) o[i] = toneCurve(i, P, 1); return o; };
   const frac = (L, lo, hi) => { let s = 0; for (let i = 0; i < 256; i++) if (L[i] >= lo && L[i] <= hi) s += h[i]; return s / n; };
   const med = p.p50 / 255, flat = p.p995 - p.p005 < 12; // a blank frame has nothing to stretch
   const backlit = med < 0.4 && p.p95 / 255 > 0.85, night = med < 0.2 && !(backlit && p.p90 / 255 > 0.5); // a big lit area means daylight
-  const dusk = an.hues.warm > 0.5 && med < 0.55;
+  const dusk = !night && an.hues.warm > 0.5 && med < 0.55, held = night || dusk; f.dusk = dusk; // keep the lift small: night stays night, a sunset stays moody
   f.med = med; f.night = night; f.backlit = backlit; f.lo = p.p005 / 255; f.hi = p.p995 / 255; f.fracHi = 0; f.fracLo = 0;
   if (flat) return f;
   let target = med;
@@ -895,20 +899,23 @@ function suggestTone(an) {
   if (target !== med) {
     const dir = target > med ? 1 : -1; let be = 0, bd = Math.abs(med - target);
     for (let k = 1; k <= 75; k++) { P.exposure = dir * k; const dd = Math.abs(toneCurve(p.p50, P, 1) - target); if (dd < bd - 1e-6) { bd = dd; be = dir * k; } }
-    if (night) be = Math.min(be, 15); else if (dusk) be = Math.min(be, 25); // night stays night, a sunset stays moody
+    if (held) be = Math.min(be, 15);
     be = Math.max(be, -30);
     P.exposure = Math.abs(be) >= 5 ? be : 0;
     if (P.exposure) f.exposure = P.exposure;
     /* never part of Fix all: exposure cannot bring back blown whites, and snow, sand and overcast skies are meant to be bright */
-    if (P.exposure < 0) { f.optional = true; P.exposure = 0; }
+    if (P.exposure < 0) f.optional = true;
   }
+  P.exposure = st.exp ? f.exposure || 0 : 0;
   let L = lut();
   const hi = L[Math.max(p.p995, p.pMx)], lo = L[p.p005];
   f.lo = lo; f.hi = hi;
-  if (hi < 0.94 && !night) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
+  if (hi < 0.94 && !held) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
   /* a lifted black point alone (whites already in place) may be a deliberate faded look: correct it only partly */
   if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, night ? 20 : f.whites ? 70 : 30)); if (f.blacks > -5) delete f.blacks; }
-  P.whites = f.whites || 0; P.blacks = f.blacks || 0; L = lut();
+  /* where the lift is held back, the black point must not take away more than the lift gives */
+  if (held) while (f.blacks && toneCurve(p.p50, { ...P, exposure: f.exposure || 0, blacks: f.blacks }, 1) < med) { f.blacks += 5; if (f.blacks > -5) delete f.blacks; }
+  P.whites = st.lev ? f.whites || 0 : 0; P.blacks = st.lev ? f.blacks || 0 : 0; L = lut();
   const fh = frac(L, 0.93, 2), fl = frac(L, -1, 0.09);
   f.fracHi = fh; f.fracLo = fl;
   if (fh > 0.06) f.highlights = -Math.round(clamp(18 + fh * 220, 18, 60));
@@ -920,8 +927,8 @@ function suggestTone(an) {
 }
 
 /* the fixes this photo gets by default, each one a switch */
-function makeBase(an) {
-  const t = an.tone, fixes = [];
+function makeBase(an, st) {
+  const t = suggestTone(an, st), fixes = [];
   if (t.exposure) fixes.push({ id: t.exposure > 0 ? 'brighten' : 'darken', p: { exposure: t.exposure }, on: !t.optional });
   const lv = {}; for (const k of ['whites', 'blacks', 'contrast']) if (t[k]) lv[k] = t[k];
   if (Object.keys(lv).length) fixes.push({ id: 'haze', p: lv, on: true });
@@ -942,24 +949,32 @@ function makeBase(an) {
   const h = an.hues;
   const why = sunset ? 'sunset' : h.aqua > 0.45 ? (h.warm > 0.12 ? 'duo' : 'aqua') : h.green > 0.4 ? 'green' : h.chroma < 0.05 ? 'mono' : 'mixed';
   const look = { sunset: 'golden', duo: 'tealorange', aqua: 'clear', green: 'jungle', mono: 'bw', mixed: 'film' }[why];
-  return { fixes, look, m: { tone: t, wbEst: wb, sat: an.sat, clipHi: an.clipHi, hues: h, pal: an.pal, horizon: hz, sunset, why } };
+  return { fixes, look, stats: an, m: { tone: t, wbEst: wb, sat: an.sat, clipHi: an.clipHi, hues: h, pal: an.pal, horizon: hz, sunset, why } };
 }
 function applyDefaults(ph) {
   ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.angle = 0; ph.fix = {}; ph.subj = null;
-  for (const f of ph.base.fixes) if (f.id !== 'level') ph.fix[f.id] = false; // nothing is corrected until the user asks
+  resize(ph); // nothing is corrected until the user asks
 }
+/* re-measure the tone fixes for the switches that are on now (Tonal range depends on Exposure, Highlights and Shadows on both) */
+function resize(ph) {
+  const b = makeBase(ph.base.stats, { exp: !!(ph.fix.brighten || ph.fix.darken), lev: !!ph.fix.haze });
+  ph.base.fixes = b.fixes; ph.base.m = b.m;
+}
+/* recommended and not yet applied; a straighten angle set by hand counts as handled */
+const needsFix = (ph, f) => f.on && !fixOn(ph, f) && !(f.id === 'level' && ph.angle !== 0);
 /* switch on every recommended fix, or switch every fix off */
 function setFixes(ph, on) {
-  for (const f of ph.base.fixes) {
-    if (f.id === 'level') { if (on ? f.on : ph.angle === f.angle) ph.angle = on ? f.angle : 0; }
-    else if (on ? f.on : true) ph.fix[f.id] = on;
+  if (!on) { for (const f of ph.base.fixes) if (f.id === 'level') { if (ph.angle === f.angle) ph.angle = 0; } else ph.fix[f.id] = false; ph.fix = {}; resize(ph); return; }
+  for (let pass = 0; pass < 3; pass++) { // a later fix can appear once an earlier one is on
+    for (const f of ph.base.fixes) if (needsFix(ph, f)) { if (f.id === 'level') ph.angle = f.angle; else ph.fix[f.id] = true; }
+    resize(ph);
   }
 }
 /* measure once, on the untouched photo, so later straightening or cropping does not shift the advice */
 function initPhoto(ph) {
   ph.angle = 0; ph.subj = null;
   const an = analyze(ph);
-  ph.base = makeBase(an);
+  ph.base = makeBase(an, { exp: false, lev: false });
   applyDefaults(ph);
   ph.an = an; ph.anKey = anKeyOf(ph);
 }
@@ -1205,7 +1220,8 @@ function renderStrip() {
 function renderMeta() {
   const ph = cur(), m = $('#meta'); m.textContent = ''; if (!ph) return;
   const [ow, oh] = outSize(ph.w, ph.h, ph.angle, ph.crop);
-  m.append(el('b', { text: ph.sample ? tr('sampleName') : ph.name }), `${ph.w}×${ph.h} → ${ow}×${oh}`);
+  const nm = ph.sample ? tr('sampleName') : ph.name;
+  m.append(el('b', { text: nm, title: nm }), el('span', { text: `${ph.w}×${ph.h} → ${ow}×${oh}` })); // the name gives way, the sizes stay
 }
 let toastT = 0;
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); if (ms) toastT = setTimeout(() => (t.hidden = true), ms); }
@@ -1215,22 +1231,22 @@ const fixText = (f) => (f.id === 'level' ? tr('s.rotate') + ' ' + signed(f.angle
 function buildFindings(ph) {
   const m = ph.base.m, t = m.tone, out = [], F = (...ids) => ph.base.fixes.find((f) => ids.includes(f.id));
   let f = F('brighten', 'darken');
-  if (f) out.push({ title: 'f.exposure', fix: f, msg: tr(f.id === 'brighten' ? 'm.dark' : 'm.bright', { m: pct(t.med) }) + (t.optional ? tr('m.highkey') : t.night ? tr('m.night') : t.backlit ? tr('m.backlit') : '') });
+  if (f) out.push({ title: 'f.exposure', fix: f, msg: tr(f.id === 'brighten' ? 'm.dark' : 'm.bright', { m: pct(t.med) }) + (t.optional ? tr('m.highkey') : t.night ? tr('m.night') : t.dusk ? tr('m.dusk') : t.backlit ? tr('m.backlit') : '') });
   else out.push({ title: 'f.exposure', msg: tr('m.expOk', { m: pct(t.med) }) });
   f = F('haze');
-  out.push(f ? { title: 'f.levels', fix: f, msg: f.p.whites || f.p.blacks ? tr('m.haze', { lo: pct(t.lo), hi: pct(t.hi) }) : tr('m.flatMid') } : { title: 'f.levels', msg: tr('m.levelsOk') });
+  out.push(f ? { title: 'f.levels', fix: f, msg: f.p.whites || f.p.blacks ? tr(f.p.whites && f.p.blacks ? 'm.haze' : f.p.blacks ? 'm.hazeLo' : 'm.hazeHi', { lo: pct(t.lo), hi: pct(t.hi) }) : tr('m.flatMid') } : { title: 'f.levels', msg: tr('m.levelsOk') });
   f = F('highlights');
   if (f) out.push({ title: 'f.highlights', fix: f, warn: m.clipHi > 0.02, msg: m.clipHi > 0.02 ? tr('m.clipped', { c: (m.clipHi * 100).toFixed(1) + '%' }) : tr('m.bright2', { f: pct(t.fracHi) }) + (f.on ? '' : tr('m.keyHi')) });
   f = F('shadows');
   if (f) out.push({ title: 'f.shadows', fix: f, msg: t.backlit ? tr('m.backlit2') : tr('m.shadows', { f: pct(t.fracLo) }) });
   f = F('castBlue', 'castYellow', 'castGreen', 'castMagenta');
-  if (f) out.push({ title: 'f.wb', fix: f, msg: tr('m.cast', { dir: tr('d.' + f.id) }) + (f.on ? '' : tr('m.warmMood')) });
-  else out.push({ title: 'f.wb', msg: tr(m.sunset ? 'm.sunset' : m.wbEst ? 'm.wbOk' : 'm.wbNone') });
+  if (f) out.push({ title: 'f.wb', fix: f, msg: tr('m.cast', { dir: tr('d.' + f.id) }) + (f.on ? '' : tr(f.id === 'castYellow' ? 'm.warmMood' : 'm.mildCast')) });
+  else out.push({ title: 'f.wb', na: !m.sunset && !m.wbEst, msg: tr(m.sunset ? 'm.sunset' : m.wbEst ? 'm.wbOk' : 'm.wbNone') });
   f = F('richer', 'calmer');
   out.push(f ? { title: 'f.color', fix: f, msg: tr(f.id === 'richer' ? 'm.pale' : 'm.heavy', { s: pct(m.sat) }) } : { title: 'f.color', msg: tr('m.colorOk', { s: pct(m.sat) }) });
   f = F('level');
   if (f) out.push({ title: 'f.horizon', fix: f, msg: tr(m.horizon.deg > 0 ? 'm.tiltR' : 'm.tiltL', { d: Math.abs(m.horizon.deg).toFixed(1) }) + (f.on ? '' : tr(f.weak ? 'm.tiltWeak' : 'm.tiltBig')) });
-  else out.push({ title: 'f.horizon', msg: tr(m.horizon.found ? 'm.level' : 'm.noHorizon') });
+  else out.push({ title: 'f.horizon', na: !m.horizon.found, msg: tr(m.horizon.found ? 'm.level' : 'm.noHorizon') });
   if (ph.an && ph.anKey === anKeyOf(ph)) { /* composition is judged on the frame as it is now */
     const hz = ph.an.horizon, hy = hz.found ? (hz.pos - ph.crop.y) / ph.crop.h : -1, mid = Math.abs(hy - 0.5) < 0.075;
     out.push({ title: 'f.comp', go: true, tip: mid, msg: mid ? tr('m.midHorizon') : tr('m.score', { n: Math.round(scoreCrop(ph.an, ph.crop).score * 100) }) });
@@ -1244,14 +1260,14 @@ function renderDiag() {
   let n = 0, todo = 0;
   for (const r of buildFindings(ph)) {
     const sw = !!(r.fix || r.look), on = r.fix ? fixOn(ph, r.fix) : r.look ? ph.look === r.look : false;
-    if (r.fix && on) n++; else if (r.fix && r.fix.on) todo++;
-    const tag = r.fix ? (on ? 'tag.fixed' : r.fix.on ? 'tag.tip' : 'tag.opt') : r.look ? (on ? 'tag.on' : 'tag.tip') : r.tip ? 'tag.tip' : r.go ? null : 'tag.ok';
-    const row = el('div', { class: 'finding', 'data-s': sw ? (on ? (r.warn ? 'warn' : 'ok') : 'tip') : r.tip ? 'tip' : 'ok' }, el('span', { class: 'dot' }),
+    if (r.fix && on) n++; else if (r.fix && needsFix(ph, r.fix)) todo++;
+    const tag = r.fix ? (on ? 'tag.fixed' : needsFix(ph, r.fix) ? 'tag.tip' : 'tag.opt') : r.look ? (on ? 'tag.on' : 'tag.opt') : r.tip ? 'tag.tip' : r.go || r.na ? null : 'tag.ok';
+    const row = el('div', { class: 'finding', 'data-k': r.title, 'data-s': sw ? (on ? 'ok' : r.warn ? 'warn' : 'tip') : r.tip ? 'tip' : r.na ? 'na' : 'ok' }, el('span', { class: 'dot' }),
       el('div', { class: 't' }, tr(r.title), tag ? el('small', { text: tr(tag) }) : null));
     if (sw) row.append(el('button', { class: 'sw', role: 'switch', 'aria-checked': String(on), 'aria-label': tr(r.title), onclick: () => {
       if (r.look) ph.look = on ? 'none' : r.look;
       else if (r.fix.id === 'level') { ph.angle = on ? 0 : r.fix.angle; ph.subj = null; }
-      else ph.fix[r.fix.id] = !on;
+      else { ph.fix[r.fix.id] = !on; resize(ph); }
       afterEdit();
     } }));
     else if (r.go) row.append(el('button', { class: 'btn sm', text: tr('go'), onclick: () => setTab('crop') }));
@@ -1260,7 +1276,7 @@ function renderDiag() {
     if (r.fix) row.append(el('div', { class: 'fix num', text: fixText(r.fix) }));
     box.append(row);
   }
-  $('#diagLead').textContent = todo ? tr('lead.todo', { n: todo }) : tr(n ? 'lead.n' : 'lead.none', { n });
+  $('#diagLead').textContent = todo ? tr(todo === 1 ? 'lead.todo1' : 'lead.todo', { n: todo }) : tr(n ? 'lead.n' : 'lead.none', { n });
   const fa = $('#btnFixAll'); fa.hidden = !todo && !n; fa.textContent = tr(todo ? 'fixAll' : 'undoAll'); fa.classList.toggle('primary', todo > 0);
   const swb = $('#swatches'), m = ph.base.m; swb.textContent = '';
   for (const p of m.pal) swb.append(el('span', { style: `flex:${p.share};background:rgb(${p.rgb.map((v) => Math.round(v)).join(',')})`, title: pct(p.share) }));
@@ -1292,7 +1308,7 @@ function syncControls() {
   const ph = cur(); if (!ph) return;
   const add = layers(ph).add; // each slider shows fixes + style + your own change, so a style demonstrates itself
   for (const k in sliderEls) { const [inp, out] = sliderEls[k], v = Math.round(ph.adjust[k] + (isSplit(k) ? 0 : add[k])); inp.value = v; out.textContent = fmtParam(k, v); if (!inp.className) setFill(inp); }
-  $('#s-lookAmt').value = ph.lookAmt; $('#o-lookAmt').textContent = ph.lookAmt; setFill($('#s-lookAmt'));
+  $('#s-lookAmt').value = ph.lookAmt; $('#o-lookAmt').textContent = ph.lookAmt; setFill($('#s-lookAmt')); $('#s-lookAmt').disabled = ph.look === 'none';
   $('#s-angle').value = ph.angle; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill($('#s-angle'));
   for (const b of document.querySelectorAll('#looks .tile')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.look));
   for (const b of document.querySelectorAll('#aspects .chip')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.aspect));
@@ -1375,7 +1391,12 @@ const keepFocus = (sel, fn) => () => {
   fn();
   if (i >= 0) { const b = box.querySelectorAll('button')[i]; if (b) b.focus({ preventScroll: true }); }
 };
-renderStrip = keepFocus('#thumbs', renderStrip); renderDiag = keepFocus('#findings', renderDiag); renderCrops = keepFocus('#crops', renderCrops);
+renderStrip = keepFocus('#thumbs', renderStrip); renderCrops = keepFocus('#crops', renderCrops);
+{ const draw = renderDiag; renderDiag = () => { // rows come and go, so remember the row, not its position
+  const box = $('#findings'), ae = document.activeElement, row = ae && box.contains(ae) ? ae.closest('.finding') : null, k = row ? row.dataset.k : null;
+  draw();
+  if (k) { const b = box.querySelector('.finding[data-k="' + k + '"] button'); if (b) b.focus({ preventScroll: true }); }
+}; }
 function renderPanels() { renderDiag(); buildLooks(); syncControls(); renderCrops(); renderMeters(); renderMeta(); }
 function afterEdit() { renderDiag(); syncControls(); render(false); }
 
@@ -1474,12 +1495,12 @@ $('#btnResetColor').addEventListener('click', () => { const ph = cur(); if (!ph)
 $('#btnReset').addEventListener('click', () => { const ph = cur(); if (!ph || !ph.base) return; applyDefaults(ph); renderPanels(); render(false); });
 $('#btnFixAll').addEventListener('click', () => {
   const ph = cur(); if (!ph || !ph.base) return;
-  setFixes(ph, ph.base.fixes.some((f) => f.on && !fixOn(ph, f))); afterEdit();
+  setFixes(ph, ph.base.fixes.some((f) => needsFix(ph, f))); afterEdit();
 });
 $('#btnFixEvery').addEventListener('click', () => {
   let n = 0;
-  for (const o of state.photos) if (o.base) { setFixes(o, true); if (o !== cur()) gradeThumb(o); n++; }
-  toast(tr('t.fixedN', { n }), 3000); afterEdit();
+  for (const o of state.photos) if (o.base && o.base.fixes.some((f) => needsFix(o, f))) { setFixes(o, true); if (o !== cur()) gradeThumb(o); n++; }
+  toast(n ? tr('t.fixedN', { n }) : tr('lead.none'), 3000); afterEdit();
 });
 $('#btnSync').addEventListener('click', () => {
   const ph = cur(); if (!ph) return; let n = 0;
