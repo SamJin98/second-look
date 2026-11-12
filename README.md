@@ -1,29 +1,37 @@
-# 第二眼 · Second Look
+# Second Look · 第二眼
 
-给照片一个第二意见：一个帮新手调色和裁剪的网页。
+A second opinion on your photos, for people who do not know how to grade or crop.
+给照片一个第二意见：帮新手调色和裁剪的网页。
 
-- **纯前端**：只有一个 `index.html`，没有后端，没有任何模型。
-- **不上传**：照片只在浏览器里用 Canvas 处理。
-- **基于规则**：曝光、层次、白平衡、地平线、构图的建议都来自固定规则，每条都能解释。
+- **Front end only / 纯前端**: one `index.html`, no backend, no model.
+- **Nothing is uploaded / 不上传**: photos are processed in the browser with Canvas.
+- **Rule based / 基于规则**: every fix comes from a fixed rule and has its own switch.
+- 中文 / English, day / night.
 
-## 使用
+## How it works
 
-直接用浏览器打开 `index.html`，或部署到任意静态托管（本仓库接了 Vercel，推送即部署）。
+1. **Fix**: obvious faults are corrected as soon as a photo loads. Each is a switch, so turning one off shows what it did.
+2. **Style**: nine looks rendered on your own photo; tap one.
+3. **Crop**: suggested crops as pictures; tap one, or drag the box. Tap the photo to mark the subject.
 
-## 它做什么
-
-| 功能 | 做法 |
+| Fix | Rule |
 |---|---|
-| 曝光 | 亮度中位数是否落在中间调 |
-| 层次 | 直方图两端各 0.5% 拉到黑白场（自动色阶） |
-| 白平衡 | 假设最亮且不鲜艳的区域应为白色，反推色偏，校正七成 |
-| 地平线 | Sobel 边缘 + 霍夫变换找贯穿画面的近水平线 |
-| 构图 | 显著性找主体，按三分法、内容保留、边缘、地平线位置打分 |
-| 风格 | 9 个手写预设，可调强度 |
+| Brighten / Darken | median luminance outside the mid-tone range (darkening is off unless highlights are blown) |
+| Clear haze | stretch the histogram ends to black and white |
+| Recover highlights, Lift shadows | share of pixels near pure white or black |
+| Color cast | the brightest, least colorful area should be white; corrected at 70% |
+| Richer / Calmer color | mean saturation too low or too high |
+| Straighten | Sobel edges and a Hough transform find a long near-horizontal line |
+| Crop | the subject is the region that differs most from its surroundings; crops never cut it and keep it where it was framed |
 
-阈值和预设是经验值，没有用真实照片数据调过，只当参考。
+Thresholds and looks are hand-written, not tuned on a photo set. Treat them as a starting point.
 
-## 已知限制
+## Limits
 
-- HEIC 只有 Safari 能直接打开，其他浏览器请先转成 JPEG。
-- 超过约 1600 万像素的照片导出时会被缩小。
+- HEIC opens only in Safari; convert to JPEG elsewhere.
+- Photos above about 16 megapixels are scaled down on save.
+- Rules cannot tell which way a person is facing, so crops never push the subject to one side.
+
+## Run
+
+Open `index.html`, or host it as a static file. This repository deploys to Vercel on every push to `main`.

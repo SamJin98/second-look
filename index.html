@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="第二眼：给照片一个第二意见。纯前端、不上传、不用模型，用固定规则帮你校正曝光、白平衡、地平线，并给出调色和裁剪建议。">
-<title>第二眼</title>
+<meta name="description" content="Second Look / 第二眼: a second opinion on your photos. Runs in the browser, uploads nothing, uses no model. Fixes exposure, haze, color cast and tilt by fixed rules, then lets you pick a style and a crop.">
+<title>Second Look</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
-/* Layout: a darkroom bench. Neutral gray surround so color judgments stay honest;
-   photo on the left, instruments (scope, advice, sliders) on the right, film strip below. */
+/* Layout: photo on a neutral gray surround (so color judgments stay honest), three steps on the right:
+   switches for fixes, pictures for styles, pictures for crops. The film strip sits under the photo. */
 :root {
   --bg: #e6e9e9;
   --panel: #f4f6f6;
@@ -23,10 +23,6 @@
   --accent-fg: #ffffff;
   --stage: #c4c4c4;
   --scope: #17191a;
-  --scope-line: #2c3031;
-  --ok: #2a7a4b;
-  --tip: #9a5b00;
-  --warn: #b23a2c;
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --sans: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -35,16 +31,17 @@
   :root:not([data-theme="light"]) {
     --bg: #222526; --panel: #2a2e2f; --raise: #33383a; --line: #3f4648;
     --fg: #e9eded; --muted: #9ba6a8; --accent: #45c6c1; --accent-fg: #062b2b;
-    --stage: #161718; --ok: #6fd09a; --tip: #f0b450; --warn: #f27f70;
+    --stage: #161718;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #222526; --panel: #2a2e2f; --raise: #33383a; --line: #3f4648;
   --fg: #e9eded; --muted: #9ba6a8; --accent: #45c6c1; --accent-fg: #062b2b;
-  --stage: #161718; --ok: #6fd09a; --tip: #f0b450; --warn: #f27f70;
+  --stage: #161718;
   color-scheme: dark;
 }
+:root[data-theme="light"] { color-scheme: light; }
 
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.5; }
@@ -57,7 +54,7 @@ button, input { font: inherit; color: inherit; }
 .app {
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 352px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas: "bar bar" "stage side" "strip side";
   column-gap: 14px;
@@ -67,81 +64,64 @@ button, input { font: inherit; color: inherit; }
 }
 
 /* ---- top bar ---- */
-.bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-block: 10px; }
-.brand { display: flex; align-items: baseline; gap: 6px; }
+.bar { grid-area: bar; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding-block: 10px; }
+.brand { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .brand .wm { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 24px; letter-spacing: -0.01em; line-height: 1; }
-.brand .cn { font-size: 15px; font-weight: 600; letter-spacing: 0.12em; }
-.meta { flex: 1 1 200px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meta b { color: var(--fg); font-weight: 500; font-family: var(--sans); font-size: 13px; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.brand .cn { font-size: 14px; font-weight: 600; letter-spacing: 0.14em; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 .btn {
   border: 1px solid var(--line); background: var(--raise); border-radius: 6px;
-  padding: 6px 12px; cursor: pointer; white-space: nowrap; line-height: 1.3;
+  padding: 6px 14px; cursor: pointer; white-space: nowrap; line-height: 1.3;
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
 .btn:hover { border-color: var(--muted); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
-.btn.quiet { background: transparent; }
-.btn.sm { padding: 3px 10px; font-size: 13px; }
-.btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.icon { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.icon:hover { border-color: var(--muted); }
+.icon svg { width: 17px; height: 17px; display: block; }
 
 /* ---- stage ---- */
 .stage { grid-area: stage; position: relative; background: var(--stage); border-radius: 8px; overflow: hidden; min-height: 240px; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .stage.crop canvas { touch-action: none; }
-.badge { position: absolute; left: 10px; top: 10px; background: var(--scope); color: #e9eded; border-radius: 4px; padding: 2px 8px; font-size: 12px; pointer-events: none; }
+.hold { position: absolute; left: 10px; bottom: 10px; border: 0; border-radius: 999px; padding: 6px 14px; background: var(--scope); color: #e9eded; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hold:active, .hold.on { background: #e9eded; color: #17191a; }
 .drop { position: absolute; inset: 8px; border: 2px dashed var(--accent); border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--stage) 80%, transparent); font-size: 16px; font-weight: 600; pointer-events: none; }
-.toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--scope); color: #e9eded; padding: 6px 14px; border-radius: 6px; max-width: calc(100% - 24px); text-align: center; pointer-events: none; }
+.toast { position: absolute; left: 50%; bottom: 54px; transform: translateX(-50%); background: var(--scope); color: #e9eded; padding: 6px 14px; border-radius: 6px; max-width: calc(100% - 24px); text-align: center; pointer-events: none; }
 
 /* ---- film strip ---- */
 .strip { grid-area: strip; display: flex; align-items: center; gap: 10px; padding-top: 10px; min-width: 0; }
-.add { flex: none; display: grid; place-items: center; text-align: center; width: 84px; height: 64px; border: 1.5px dashed var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1.35; color: var(--fg); }
+.add { flex: none; display: grid; place-items: center; text-align: center; width: 86px; height: 64px; border: 1.5px dashed var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1.3; }
 .add:hover, .add:focus-within { border-color: var(--accent); color: var(--accent); }
-.add strong { display: block; font-size: 18px; line-height: 1; font-weight: 400; }
+.add strong { display: block; font-size: 20px; line-height: 1; font-weight: 400; }
 .thumbs { display: flex; gap: 8px; overflow-x: auto; min-width: 0; flex: 1; padding: 3px; scrollbar-width: thin; }
 .thumb { flex: none; position: relative; width: 86px; height: 64px; padding: 0; border: 0; border-radius: 5px; background: var(--stage); cursor: pointer; overflow: hidden; outline: 2px solid transparent; outline-offset: 1px; }
-.thumb canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb canvas { width: 100%; height: 100%; display: block; }
 .thumb[aria-current="true"] { outline-color: var(--accent); }
 .thumb .tag { position: absolute; left: 3px; bottom: 3px; background: var(--scope); color: #e9eded; font-size: 10px; padding: 0 5px; border-radius: 3px; }
-.privacy { flex: none; margin: 0; max-width: 150px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.privacy { flex: none; margin: 0; font-size: 12px; color: var(--muted); }
 
 /* ---- side panel ---- */
 .side { grid-area: side; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.scope { background: var(--scope); padding: 8px 10px 6px; }
-.scope canvas { display: block; width: 100%; height: 76px; }
-.scope .legend { display: flex; justify-content: space-between; color: #9ba6a8; margin-top: 3px; }
-.scope .legend .hot { color: #f27f70; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
-.tabs button { border: 0; background: transparent; padding: 10px 4px; cursor: pointer; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button { border: 0; background: transparent; padding: 11px 4px; cursor: pointer; font-weight: 600; font-size: 15px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
-.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 20px; display: flex; flex-direction: column; gap: 14px; }
-
-.lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.lead p { margin: 0; min-width: 0; }
-.lead strong { font-size: 15px; }
+.pane { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 18px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
 h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
-.group { display: flex; flex-direction: column; gap: 6px; }
-.hint { margin: 0; font-size: 12px; color: var(--muted); }
 
-/* findings */
-.findings { display: flex; flex-direction: column; }
-.finding { padding: 10px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; align-items: start; }
-.finding:last-child { border-bottom: 1px solid var(--line); }
-.finding .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; background: var(--ok); }
-.finding[data-s="tip"] .dot { background: var(--tip); border-radius: 2px; }
-.finding[data-s="warn"] .dot { background: var(--warn); border-radius: 0; transform: rotate(45deg); }
-.finding .t { font-weight: 600; }
-.finding .t small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 12px; }
-.finding[data-s="tip"] .t small { color: var(--tip); }
-.finding[data-s="warn"] .t small { color: var(--warn); }
-.finding .m { grid-column: 2 / 4; margin: 0; color: var(--muted); font-size: 13px; }
-.finding .fix { grid-column: 2 / 4; margin-top: 2px; color: var(--fg); }
-.finding .btn { grid-row: 1; grid-column: 3; }
-
-.swatches { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
-.swatches span { min-width: 6px; }
+/* fixes: one switch each */
+.fixes { display: flex; flex-direction: column; }
+.fix { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 11px 2px; cursor: pointer; text-align: left; font-size: 15px; }
+.fix:first-child { border-top: 1px solid var(--line); }
+.fix i { flex: none; width: 38px; height: 22px; border-radius: 11px; background: var(--line); position: relative; }
+.fix i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--raise); box-shadow: 0 0 0 1px var(--line); }
+.fix[aria-checked="true"] i { background: var(--accent); }
+.fix[aria-checked="true"] i::after { left: 18px; box-shadow: none; }
+.fix[aria-checked="false"] span { color: var(--muted); }
+.nofix { margin: 0; padding: 11px 2px; border-block: 1px solid var(--line); color: var(--muted); }
 
 /* sliders */
 .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 8px; }
@@ -151,40 +131,29 @@ h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color
 input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; margin: 0; background: transparent; cursor: pointer; --a: 50%; --b: 50%; --trk: linear-gradient(to right, var(--line) 0, var(--line) var(--a), var(--accent) var(--a), var(--accent) var(--b), var(--line) var(--b), var(--line) 100%); }
 input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: var(--trk); }
 input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--trk); }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
-input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--fg); border: 2px solid var(--panel); }
 input.t-temp { --trk: linear-gradient(to right, #4f8fe6, #b9bcbc, #e8a53a); }
 input.t-tint { --trk: linear-gradient(to right, #46b76a, #b9bcbc, #cf5fc0); }
 input.t-hue { --trk: linear-gradient(to right, #e05555, #d8c043, #4fbf6a, #43c4cf, #4f6fe6, #c455d8, #e05555); }
 input.t-aqua { --trk: linear-gradient(to right, #5a6fe0, #3f9fe0, #2fc4b8); }
 
-/* looks */
-.looks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.look { border: 0; padding: 0; background: transparent; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 3px; }
-.look canvas { width: 100%; aspect-ratio: 4 / 3; display: block; border-radius: 4px; background: var(--stage); outline: 2px solid transparent; outline-offset: 1px; }
-.look[aria-pressed="true"] canvas { outline-color: var(--accent); }
-.look span { font-size: 12px; }
-.look[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
+details summary { cursor: pointer; font-weight: 600; color: var(--muted); padding: 4px 0; }
+details[open] summary { color: var(--fg); margin-bottom: 12px; }
+details .groups { display: flex; flex-direction: column; gap: 16px; }
+#hist { display: block; width: 100%; height: 72px; border-radius: 4px; background: var(--scope); }
+.foot { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 3px 11px; cursor: pointer; font-size: 13px; }
-.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-
-.sugs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.sug { border: 1px solid var(--line); background: var(--raise); border-radius: 6px; padding: 5px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: center; }
-.sug:hover { border-color: var(--accent); }
-.sug .box { width: 100%; height: 62px; display: grid; place-items: center; }
-.sug canvas { max-width: 100%; max-height: 62px; display: block; border-radius: 2px; }
-.sug span { font-size: 12px; }
-.sug .num { color: var(--muted); }
-
-.meters { display: grid; grid-template-columns: auto minmax(0, 1fr) 4ch; gap: 6px 10px; align-items: center; font-size: 13px; }
-.meter { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
-.meters .num { text-align: right; color: var(--muted); }
-
-details summary { cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
-details .group { margin-top: 8px; }
+/* pictures to tap: styles and crops */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+.tile { border: 0; padding: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: stretch; text-align: center; position: relative; }
+.tile .pic { width: 100%; aspect-ratio: 4 / 3; display: grid; place-items: center; border-radius: 5px; background: var(--stage); outline: 2px solid transparent; outline-offset: 1px; overflow: hidden; }
+.tile canvas { max-width: 100%; max-height: 100%; display: block; }
+.tile.fill canvas { width: 100%; height: 100%; }
+.tile[aria-pressed="true"] .pic { outline-color: var(--accent); }
+.tile span { font-size: 13px; }
+.tile[aria-pressed="true"] span { color: var(--accent); font-weight: 600; }
+.tile .star { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-size: 11px; line-height: 18px; text-align: center; }
 
 /* export fallback sheet */
 .sheet { position: fixed; inset: 0; z-index: 30; background: color-mix(in srgb, var(--scope) 88%, transparent); display: grid; place-items: center; padding: 20px; }
@@ -197,17 +166,16 @@ details .group { margin-top: 8px; }
   body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
   .app { display: flex; flex-direction: column; height: auto; }
   .bar { padding-block: 8px; }
-  .meta { flex-basis: 100%; order: 3; }
-  .actions { margin-left: auto; }
+  .brand .wm { font-size: 21px; }
   .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; height: 44vh; height: 44svh; min-height: 230px; flex: none; box-shadow: 0 0 0 8px var(--bg); }
   .strip { flex-wrap: wrap; }
-  .privacy { max-width: none; flex-basis: 100%; }
+  .privacy { flex-basis: 100%; }
   .side { margin-top: 12px; overflow: visible; }
   .pane { overflow: visible; }
-  input[type="range"] { height: 30px; }
+  input[type="range"] { height: 32px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .btn, .chip, .thumb, .look canvas { transition: border-color 0.12s, outline-color 0.12s, background-color 0.12s; }
+  .btn, .icon, .thumb, .tile .pic, .fix i, .fix i::after { transition: border-color 0.12s, outline-color 0.12s, background-color 0.12s, left 0.12s; }
 }
 </style>
 </head>
@@ -215,87 +183,67 @@ details .group { margin-top: 8px; }
 
 <div class="app" id="app">
   <header class="bar">
-    <div class="brand"><span class="wm">Second Look</span><span class="cn">第二眼</span></div>
-    <div class="meta" id="meta"></div>
+    <div class="brand"><span class="wm">Second Look</span><span class="cn" id="brandCn">第二眼</span></div>
     <div class="actions">
-      <button class="btn quiet" id="btnCompare" title="按住查看未调色的原图（快捷键 \）">按住看原图</button>
-      <button class="btn quiet" id="btnReset">重置这张</button>
-      <button class="btn" id="btnExportAll" hidden>打包导出全部</button>
-      <button class="btn primary" id="btnExport">导出 JPEG</button>
+      <button class="icon" id="btnLang" data-i18n-label="a.lang">EN</button>
+      <button class="icon" id="btnTheme" data-i18n-label="a.theme"></button>
+      <button class="btn" id="btnExportAll" data-i18n="saveAll" hidden>Save all</button>
+      <button class="btn primary" id="btnExport" data-i18n="save">Save</button>
     </div>
   </header>
 
   <main class="stage" id="stage">
-    <canvas id="view" aria-label="照片预览"></canvas>
-    <div class="badge" id="badge" hidden></div>
-    <div class="drop" id="drop" hidden>松手，把照片放进胶片条</div>
+    <canvas id="view" data-i18n-label="a.preview"></canvas>
+    <button class="hold" id="btnCompare" data-i18n="compare">Original</button>
+    <div class="drop" id="drop" data-i18n="drop" hidden>Drop to add</div>
     <div class="toast" id="toast" role="status" hidden></div>
   </main>
 
-  <section class="strip" aria-label="胶片条">
-    <label class="add" for="file"><span><strong>＋</strong>添加照片</span>
+  <section class="strip">
+    <label class="add" for="file"><span><strong>＋</strong><span data-i18n="add">Add photos</span></span>
       <input class="vh" id="file" type="file" accept="image/*" multiple>
     </label>
     <div class="thumbs" id="thumbs"></div>
-    <p class="privacy">照片只在这台设备的浏览器里处理，不会上传。</p>
+    <p class="privacy" data-i18n="privacy">Photos stay on this device</p>
   </section>
 
   <aside class="side">
-    <div class="scope">
-      <canvas id="hist" width="640" height="152" aria-label="RGB 直方图"></canvas>
-      <div class="legend num"><span id="clipLo">暗部</span><span>直方图</span><span id="clipHi">亮部</span></div>
-    </div>
     <div class="tabs" role="tablist">
-      <button role="tab" id="tab-diag" aria-selected="true" aria-controls="pane-diag">诊断</button>
-      <button role="tab" id="tab-color" aria-selected="false" aria-controls="pane-color">调色</button>
-      <button role="tab" id="tab-crop" aria-selected="false" aria-controls="pane-crop">裁剪</button>
+      <button role="tab" id="tab-fix" aria-selected="true" aria-controls="pane-fix" data-i18n="tab.fix">Fix</button>
+      <button role="tab" id="tab-style" aria-selected="false" aria-controls="pane-style" data-i18n="tab.style">Style</button>
+      <button role="tab" id="tab-crop" aria-selected="false" aria-controls="pane-crop" data-i18n="tab.crop">Crop</button>
     </div>
 
-    <div class="pane" id="pane-diag" role="tabpanel" aria-labelledby="tab-diag">
-      <div class="lead"><p id="diagLead"></p><button class="btn primary sm" id="btnApplyAll">一键应用</button></div>
-      <div class="findings" id="findings"></div>
-      <div class="group"><h3>画面主色</h3><div class="swatches" id="swatches"></div><p class="hint" id="paletteNote"></p></div>
-      <p class="hint">诊断全靠直方图、白点估计、边缘检测这些固定规则算出来，没有用任何模型。规则不懂你的意图，比如故意拍的剪影或暗调，拿不准时以你的眼睛为准。</p>
+    <div class="pane" id="pane-fix" role="tabpanel" aria-labelledby="tab-fix">
+      <div class="fixes" id="fixes"></div>
+      <div class="group" id="basic"></div>
+      <details id="more">
+        <summary data-i18n="more">More controls</summary>
+        <div class="groups"><canvas id="hist" width="640" height="144" data-i18n-label="a.hist"></canvas><div class="groups" id="sliders"></div></div>
+      </details>
+      <div class="foot"><button class="btn" id="btnReset" data-i18n="reset">Reset</button></div>
     </div>
 
-    <div class="pane" id="pane-color" role="tabpanel" aria-labelledby="tab-color" hidden>
-      <div class="group">
-        <h3>风格</h3>
-        <div class="looks" id="looks"></div>
-        <div class="row"><label for="s-lookAmt">风格强度</label><output id="o-lookAmt" class="num">100</output>
-          <input type="range" id="s-lookAmt" min="0" max="100" step="1" value="100"></div>
-      </div>
-      <div id="sliders" class="group" style="gap:14px"></div>
-      <div class="chips">
-        <button class="btn sm" id="btnResetColor">重置调色</button>
-        <button class="btn sm" id="btnSync" hidden>把这套调色用到全部照片</button>
-      </div>
-      <p class="hint">双击任意滑块可单独归零。</p>
+    <div class="pane" id="pane-style" role="tabpanel" aria-labelledby="tab-style" hidden>
+      <div class="tiles" id="looks"></div>
+      <div class="row"><label for="s-lookAmt" data-i18n="strength">Strength</label><span></span>
+        <input type="range" id="s-lookAmt" min="0" max="100" step="1" value="70"></div>
+      <div class="foot"><button class="btn" id="btnSync" data-i18n="applyAll" hidden>Apply to all photos</button></div>
     </div>
 
     <div class="pane" id="pane-crop" role="tabpanel" aria-labelledby="tab-crop" hidden>
-      <div class="group"><h3>比例</h3><div class="chips" id="aspects"></div>
-        <p class="hint">4:5 适合 Instagram 竖图，9:16 适合手机壁纸和 Story。</p></div>
-      <div class="group">
-        <div class="row"><label for="s-angle">拉直</label><output id="o-angle" class="num">0.0°</output>
-          <input type="range" id="s-angle" min="-15" max="15" step="0.1" value="0"></div>
-        <div class="chips"><button class="btn sm" id="btnLevel">自动拉平地平线</button><button class="btn sm" id="btnResetCrop">重置裁剪</button></div>
-      </div>
-      <div class="group"><h3>构图参考线</h3><div class="chips" id="overlays"></div></div>
-      <div class="group"><h3>建议裁剪</h3><div class="sugs" id="sugs"></div>
-        <p class="hint" id="sugNote"></p></div>
-      <div class="group"><h3>当前构图</h3><div class="meters" id="meters"></div></div>
-      <p class="hint">打分规则：找出画面里最显眼的区域当主体，看它离三分点多近、裁掉了多少内容、边缘有没有切到东西、地平线是否落在三分线。是参考，不是标准答案。</p>
+      <div class="tiles" id="crops"></div>
+      <div class="row"><label for="s-angle" data-i18n="rotate">Rotate</label><output id="o-angle" class="num">0.0°</output>
+        <input type="range" id="s-angle" min="-15" max="15" step="0.1" value="0"></div>
     </div>
   </aside>
 </div>
 
 <div class="sheet" id="sheet" hidden>
   <div class="card">
-    <p><strong>成品在这里</strong></p>
-    <img id="sheetImg" alt="导出的成品">
-    <p class="hint">这个窗口不能直接存文件。长按（手机）或右键（电脑）图片，选择「存储图像」。</p>
-    <button class="btn" id="sheetClose">关闭</button>
+    <img id="sheetImg" alt="">
+    <p data-i18n="sheet.hint">Long-press or right-click the picture to save it.</p>
+    <button class="btn" id="sheetClose" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -316,53 +264,127 @@ const el = (tag, props, ...kids) => {
   for (const k of kids) if (k != null) e.append(k);
   return e;
 };
-const tick = () => new Promise((r) => setTimeout(r, 0));
+/* yield to the browser without timer throttling in background tabs */
+const tick = () => new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(); c.port2.postMessage(0); });
 const signed = (v, d = 0) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
-const pct = (v) => Math.round(v * 100) + '%';
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
+
+/* ================= language ================= */
+const STR = {
+  zh: {
+    'tab.fix': '修正', 'tab.style': '风格', 'tab.crop': '裁剪',
+    save: '保存', saveAll: '全部保存', busy: '处理中 {p}%', busyN: '处理中 {i} / {n}',
+    add: '添加照片', privacy: '照片不会上传', sample: '示例', compare: '按住看原图', drop: '松手添加',
+    more: '更多调节', reset: '重置', strength: '强度', applyAll: '用到全部照片', rotate: '旋转', close: '关闭',
+    nofix: '这张不用修',
+    'fx.brighten': '提亮', 'fx.darken': '压暗', 'fx.haze': '去灰雾', 'fx.highlights': '找回亮部细节', 'fx.shadows': '提亮暗部',
+    'fx.castBlue': '校正偏蓝', 'fx.castYellow': '校正偏黄', 'fx.castGreen': '校正偏绿', 'fx.castMagenta': '校正偏洋红',
+    'fx.richer': '颜色加浓', 'fx.calmer': '颜色收一点', 'fx.level': '摆正',
+    's.exposure': '亮度', 's.contrast': '对比', 's.temp': '冷暖', 's.vibrance': '鲜艳',
+    's.highlights': '高光', 's.shadows': '阴影', 's.whites': '白场', 's.blacks': '黑场', 's.tint': '色调', 's.saturation': '饱和度',
+    's.aquaSat': '饱和', 's.aquaHue': '色相', 's.aquaLum': '明度', 's.greenSat': '绿色', 's.warmSat': '暖色',
+    's.clarity': '清晰度', 's.fade': '褪色', 's.vignette': '暗角', 's.shHue': '暗部色相', 's.shAmt': '暗部强度', 's.hiHue': '亮部色相', 's.hiAmt': '亮部强度',
+    'g.light': '光线', 'g.color': '色彩', 'g.blues': '天空与水', 'g.sat': '单独加浓', 'g.texture': '质感', 'g.split': '分离色调',
+    'lk.none': '自然', 'lk.clear': '清透', 'lk.tealorange': '电影感', 'lk.golden': '暖阳', 'lk.deepblue': '深蓝', 'lk.film': '怀旧', 'lk.airy': '清新', 'lk.jungle': '森林', 'lk.bw': '黑白',
+    'cr.full': '不裁', 'cr.tight': '收紧',
+    'a.lang': 'Switch to English', 'a.theme': '切换日间/夜间', 'a.preview': '照片预览', 'a.hist': '直方图',
+    'sheet.hint': '长按或右键图片，选择存储。',
+    't.reading': '正在读取 {i} / {n}', 't.added': '已添加 {n} 张', 't.heic': '{n} 张没能打开。这个浏览器不支持 HEIC，请先转成 JPEG。', 't.bad': '{n} 张没能打开',
+    't.saved': '已保存', 't.cancel': '已取消', 't.wait': '稍等再试', 't.fail': '保存失败，照片可能太大', 't.zip': '这个窗口不能保存压缩包，请逐张保存', 't.partial': '{n} 张处理失败，其余已打包',
+    't.synced': '已用到另外 {n} 张', 't.read': '这张照片读取失败',
+  },
+  en: {
+    'tab.fix': 'Fix', 'tab.style': 'Style', 'tab.crop': 'Crop',
+    save: 'Save', saveAll: 'Save all', busy: 'Working {p}%', busyN: 'Working {i} / {n}',
+    add: 'Add photos', privacy: 'Photos stay on this device', sample: 'Sample', compare: 'Hold for original', drop: 'Drop to add',
+    more: 'More controls', reset: 'Reset', strength: 'Strength', applyAll: 'Apply to all photos', rotate: 'Rotate', close: 'Close',
+    nofix: 'Nothing to fix',
+    'fx.brighten': 'Brighten', 'fx.darken': 'Darken', 'fx.haze': 'Clear haze', 'fx.highlights': 'Recover highlights', 'fx.shadows': 'Lift shadows',
+    'fx.castBlue': 'Fix blue cast', 'fx.castYellow': 'Fix yellow cast', 'fx.castGreen': 'Fix green cast', 'fx.castMagenta': 'Fix magenta cast',
+    'fx.richer': 'Richer color', 'fx.calmer': 'Calmer color', 'fx.level': 'Straighten',
+    's.exposure': 'Brightness', 's.contrast': 'Contrast', 's.temp': 'Warmth', 's.vibrance': 'Vibrance',
+    's.highlights': 'Highlights', 's.shadows': 'Shadows', 's.whites': 'Whites', 's.blacks': 'Blacks', 's.tint': 'Tint', 's.saturation': 'Saturation',
+    's.aquaSat': 'Saturation', 's.aquaHue': 'Hue', 's.aquaLum': 'Brightness', 's.greenSat': 'Greens', 's.warmSat': 'Warm tones',
+    's.clarity': 'Clarity', 's.fade': 'Fade', 's.vignette': 'Vignette', 's.shHue': 'Shadow hue', 's.shAmt': 'Shadow amount', 's.hiHue': 'Highlight hue', 's.hiAmt': 'Highlight amount',
+    'g.light': 'Light', 'g.color': 'Color', 'g.blues': 'Sky and water', 'g.sat': 'Boost one color', 'g.texture': 'Texture', 'g.split': 'Split toning',
+    'lk.none': 'Natural', 'lk.clear': 'Clear', 'lk.tealorange': 'Cinematic', 'lk.golden': 'Golden', 'lk.deepblue': 'Deep blue', 'lk.film': 'Film', 'lk.airy': 'Airy', 'lk.jungle': 'Forest', 'lk.bw': 'Mono',
+    'cr.full': 'Full', 'cr.tight': 'Tighter',
+    'a.lang': '切换到中文', 'a.theme': 'Switch day / night', 'a.preview': 'Photo preview', 'a.hist': 'Histogram',
+    'sheet.hint': 'Long-press or right-click the picture to save it.',
+    't.reading': 'Reading {i} / {n}', 't.added': 'Added {n}', 't.heic': '{n} could not be opened. This browser cannot read HEIC; convert to JPEG first.', 't.bad': '{n} could not be opened',
+    't.saved': 'Saved', 't.cancel': 'Cancelled', 't.wait': 'Try again in a moment', 't.fail': 'Could not save; the photo may be too large', 't.zip': 'This window cannot save a zip; save photos one at a time', 't.partial': '{n} failed; the rest are in the zip',
+    't.synced': 'Applied to {n} more', 't.read': 'Could not read this photo',
+  },
+};
+let lang = store.get('sl-lang') || ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+if (!STR[lang]) lang = 'en';
+const tr = (k, v) => { let s = STR[lang][k] ?? STR.en[k] ?? k; if (v) for (const n in v) s = s.replace('{' + n + '}', v[n]); return s; };
+const I = (k) => ({ 'data-i18n': k, text: tr(k) });
+function applyLang() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  for (const e of document.querySelectorAll('[data-i18n]')) e.textContent = tr(e.dataset.i18n);
+  for (const e of document.querySelectorAll('[data-i18n-label]')) { const v = tr(e.dataset.i18nLabel); e.setAttribute('aria-label', v); e.title = v; }
+  $('#btnLang').textContent = lang === 'zh' ? 'EN' : '中';
+  $('#brandCn').hidden = lang !== 'zh';
+  document.title = lang === 'zh' ? '第二眼 · Second Look' : 'Second Look';
+}
+
+/* ================= day / night ================= */
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+const root = document.documentElement;
+const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+const paintThemeBtn = () => { $('#btnTheme').innerHTML = isDark() ? SUN : MOON; };
+{ const saved = store.get('sl-theme'); if (saved === 'dark' || saved === 'light') root.dataset.theme = saved; }
+$('#btnTheme').addEventListener('click', () => { const next = isDark() ? 'light' : 'dark'; root.dataset.theme = next; store.set('sl-theme', next); paintThemeBtn(); });
+new MutationObserver(paintThemeBtn).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintThemeBtn);
 
 /* ================= parameters ================= */
 const DEF = { exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0, temp: 0, tint: 0,
   vibrance: 0, saturation: 0, aquaSat: 0, aquaHue: 0, aquaLum: 0, greenSat: 0, warmSat: 0,
   clarity: 0, fade: 0, vignette: 0, shHue: 210, shAmt: 0, hiHue: 40, hiAmt: 0 };
-const NAMES = { exposure: '曝光', contrast: '对比度', highlights: '高光', shadows: '阴影', whites: '白色', blacks: '黑色',
-  temp: '色温', tint: '色调', vibrance: '自然饱和度', saturation: '饱和度', aquaSat: '蓝青饱和', aquaHue: '蓝青色相',
-  aquaLum: '蓝青明度', greenSat: '绿色饱和', warmSat: '暖色饱和', clarity: '清晰度', fade: '褪色', vignette: '暗角' };
-const fmtParam = (k, v) => (k === 'exposure' ? signed(v / 50, 2) + ' EV' : k === 'shHue' || k === 'hiHue' ? Math.round(v) + '°' : signed(v));
+const fmtParam = (k, v) => (k === 'shHue' || k === 'hiHue' ? Math.round(v) + '°' : signed(v));
+const BASIC = [['exposure'], ['temp', 't-temp'], ['vibrance'], ['contrast']];
 const GROUPS = [
-  { title: '光线', items: [['exposure', '曝光'], ['contrast', '对比度'], ['highlights', '高光'], ['shadows', '阴影'], ['whites', '白色'], ['blacks', '黑色']] },
-  { title: '色彩', items: [['temp', '色温　冷 ↔ 暖', 't-temp'], ['tint', '色调　绿 ↔ 洋红', 't-tint'], ['vibrance', '自然饱和度'], ['saturation', '饱和度']] },
-  { title: '天空与海水', items: [['aquaSat', '饱和'], ['aquaHue', '色相　偏蓝 ↔ 偏青', 't-aqua'], ['aquaLum', '明度']] },
-  { title: '植被与暖色', items: [['greenSat', '绿植饱和'], ['warmSat', '沙滩、肤色、晚霞饱和']] },
-  { title: '质感', items: [['clarity', '清晰度'], ['fade', '褪色', '', 0, 100], ['vignette', '暗角', '', 0, 100]] },
-  { title: '分离色调', fold: true, items: [['shHue', '暗部色相', 't-hue', 0, 360], ['shAmt', '暗部强度', '', 0, 100], ['hiHue', '亮部色相', 't-hue', 0, 360], ['hiAmt', '亮部强度', '', 0, 100]] },
+  { title: 'g.light', items: [['highlights'], ['shadows'], ['whites'], ['blacks']] },
+  { title: 'g.color', items: [['tint', 't-tint'], ['saturation']] },
+  { title: 'g.blues', items: [['aquaSat'], ['aquaHue', 't-aqua'], ['aquaLum']] },
+  { title: 'g.sat', items: [['greenSat'], ['warmSat']] },
+  { title: 'g.texture', items: [['clarity'], ['fade', '', 0, 100], ['vignette', '', 0, 100]] },
+  { title: 'g.split', items: [['shHue', 't-hue', 0, 360], ['shAmt', '', 0, 100], ['hiHue', 't-hue', 0, 360], ['hiAmt', '', 0, 100]] },
 ];
 const LOOKS = [
-  { id: 'none', name: '原味', p: {} },
-  { id: 'clear', name: '通透海岛', p: { contrast: 14, whites: 8, blacks: -8, highlights: -12, vibrance: 28, aquaSat: 22, aquaHue: 18, clarity: 22 } },
-  { id: 'tealorange', name: '青橙', p: { contrast: 12, aquaHue: 40, aquaSat: 10, warmSat: 24, greenSat: -20, vibrance: 10, shHue: 190, shAmt: 24, hiHue: 38, hiAmt: 22 } },
-  { id: 'golden', name: '金色时刻', p: { temp: 22, tint: 6, highlights: -22, shadows: 14, warmSat: 24, vibrance: 12, hiHue: 42, hiAmt: 26, shHue: 260, shAmt: 8, fade: 10, vignette: 18 } },
-  { id: 'deepblue', name: '深邃蓝调', p: { temp: -8, contrast: 20, aquaLum: -34, aquaSat: 26, blacks: -10, clarity: 18, vignette: 14, vibrance: 8 } },
-  { id: 'film', name: '胶片', p: { contrast: -8, fade: 40, saturation: -12, vibrance: 10, highlights: -18, shadows: 12, temp: 8, greenSat: -18, aquaHue: 20, shHue: 160, shAmt: 12, hiHue: 45, hiAmt: 16, vignette: 10 } },
-  { id: 'airy', name: '日系清新', p: { exposure: 14, contrast: -16, shadows: 26, highlights: -10, saturation: -14, vibrance: 6, temp: -6, fade: 22, aquaHue: 14, aquaLum: 8 } },
-  { id: 'jungle', name: '雨林', p: { contrast: 14, greenSat: 14, aquaSat: -6, temp: 6, blacks: -10, shadows: 8, clarity: 20, shHue: 150, shAmt: 10, vignette: 20, vibrance: 10 } },
-  { id: 'bw', name: '黑白', p: { saturation: -100, contrast: 24, clarity: 20, blacks: -8, fade: 6 } },
+  { id: 'none', p: {} },
+  { id: 'clear', p: { contrast: 14, whites: 8, blacks: -8, highlights: -12, vibrance: 28, aquaSat: 22, aquaHue: 18, clarity: 22 } },
+  { id: 'tealorange', p: { contrast: 12, aquaHue: 40, aquaSat: 10, warmSat: 24, greenSat: -20, vibrance: 10, shHue: 190, shAmt: 24, hiHue: 38, hiAmt: 22 } },
+  { id: 'golden', p: { temp: 22, tint: 6, highlights: -22, shadows: 14, warmSat: 24, vibrance: 12, hiHue: 42, hiAmt: 26, shHue: 260, shAmt: 8, fade: 10, vignette: 18 } },
+  { id: 'deepblue', p: { temp: -8, contrast: 20, aquaLum: -34, aquaSat: 26, blacks: -10, clarity: 18, vignette: 14, vibrance: 8 } },
+  { id: 'film', p: { contrast: -8, fade: 40, saturation: -12, vibrance: 10, highlights: -18, shadows: 12, temp: 8, greenSat: -18, aquaHue: 20, shHue: 160, shAmt: 12, hiHue: 45, hiAmt: 16, vignette: 10 } },
+  { id: 'airy', p: { exposure: 14, contrast: -16, shadows: 26, highlights: -10, saturation: -14, vibrance: 6, temp: -6, fade: 22, aquaHue: 14, aquaLum: 8 } },
+  { id: 'jungle', p: { contrast: 14, greenSat: 14, aquaSat: -6, temp: 6, blacks: -10, shadows: 8, clarity: 20, shHue: 150, shAmt: 10, vignette: 20, vibrance: 10 } },
+  { id: 'bw', p: { saturation: -100, contrast: 24, clarity: 20, blacks: -8, fade: 6 } },
 ];
-const ASPECTS = [['free', '自由', null], ['orig', '原比例', 0], ['1:1', '1:1', 1], ['4:5', '4:5', 4 / 5], ['3:4', '3:4', 3 / 4], ['3:2', '3:2', 3 / 2], ['16:9', '16:9', 16 / 9], ['9:16', '9:16', 9 / 16]];
-const OVERLAYS = [['none', '无'], ['thirds', '三分法'], ['phi', '黄金分割'], ['diag', '对角线'], ['spiral', '黄金螺旋'], ['center', '中心十字']];
+const LOOK_AMT = 70;
+/* crop shapes: null = free, 0 = same as the photo, otherwise width / height */
+const RATIOS = { free: null, orig: 0, '4:5': 4 / 5, '1:1': 1, '16:9': 16 / 9, '9:16': 9 / 16 };
 const FULL = { x: 0, y: 0, w: 1, h: 1 };
 
-const state = { photos: [], cur: -1, tab: 'diag', overlay: 'thirds', spiral: 0, compare: false };
+const state = { photos: [], cur: -1, tab: 'fix', compare: false };
 const cur = () => state.photos[state.cur];
 let uid = 0;
 
+const anKeyOf = (ph) => ph.id + '|' + ph.angle + '|' + (ph.subj ? ph.subj.x.toFixed(3) + ',' + ph.subj.y.toFixed(3) : '');
+const fixOn = (ph, f) => (f.id === 'level' ? ph.angle === f.angle : !!ph.fix[f.id]);
 function finalParams(ph, lookId, amt) {
   const P = { ...ph.adjust };
-  const L = LOOKS.find((l) => l.id === (lookId ?? ph.look));
-  const s = (amt ?? ph.lookAmt) / 100;
+  if (ph.base) for (const f of ph.base.fixes) if (f.p && ph.fix[f.id]) for (const k in f.p) P[k] += f.p[k];
+  P.shT = [[P.shHue, P.shAmt]]; P.hiT = [[P.hiHue, P.hiAmt]];
+  const L = LOOKS.find((l) => l.id === (lookId ?? ph.look)), s = (amt ?? ph.lookAmt) / 100;
   if (L && s > 0) {
-    for (const k in L.p) if (k !== 'shHue' && k !== 'hiHue') P[k] += L.p[k] * s;
-    if (L.p.shAmt && L.p.shAmt * s >= ph.adjust.shAmt) P.shHue = L.p.shHue;
-    if (L.p.hiAmt && L.p.hiAmt * s >= ph.adjust.hiAmt) P.hiHue = L.p.hiHue;
+    for (const k in L.p) if (!/^(sh|hi)(Hue|Amt)$/.test(k)) P[k] += L.p[k] * s;
+    if (L.p.shAmt) P.shT.push([L.p.shHue, L.p.shAmt * s]);
+    if (L.p.hiAmt) P.hiT.push([L.p.hiHue, L.p.hiAmt * s]);
   }
   return P;
 }
@@ -386,7 +408,7 @@ function toneCurve(i, P, gain) {
   const bp = -clamp(P.blacks, -100, 100) / 100 * 0.12, wp = 1 - clamp(P.whites, -100, 100) / 100 * 0.22;
   x = clamp((x - bp) / (wp - bp), 0, 1);
   const sh = clamp(P.shadows, -100, 100) / 100, hi = clamp(P.highlights, -100, 100) / 100;
-  x += sh * 1.4 * x * Math.pow(1 - x, 3) + hi * 1.4 * (1 - x) * x * x * x;
+  x = clamp(x + sh * 1.4 * x * Math.pow(1 - x, 3) + hi * 1.4 * (1 - x) * x * x * x, 0, 1);
   const p = Math.pow(2, clamp(P.contrast, -100, 100) / 100 * 0.9);
   x = x < 0.5 ? 0.5 * Math.pow(2 * x, p) : 1 - 0.5 * Math.pow(2 * (1 - x), p);
   const f = clamp(P.fade, 0, 100) / 100;
@@ -402,9 +424,14 @@ function hueRgb(h) {
   const f = (n) => { const k = (n + h / 60) % 6; return 1 - Math.max(0, Math.min(k, 4 - k, 1)); };
   return [f(5), f(3), f(1)];
 }
-function tintVec(h, amt) {
-  const c = hueRgb(h), y = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2], k = amt / 100 * 70;
-  return [(c[0] - y) * k, (c[1] - y) * k, (c[2] - y) * k];
+function tintSum(list) {
+  const o = [0, 0, 0];
+  for (const [h, amt] of list) {
+    const a = clamp(amt, 0, 100); if (!a) continue;
+    const c = hueRgb(((h % 360) + 360) % 360), y = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2], k = a / 100 * 70;
+    o[0] += (c[0] - y) * k; o[1] += (c[1] - y) * k; o[2] += (c[2] - y) * k;
+  }
+  return o;
 }
 const band = (h, a, b, c, d) => (h <= a || h >= d ? 0 : h < b ? (h - a) / (b - a) : h <= c ? 1 : (d - h) / (d - c));
 
@@ -416,8 +443,8 @@ function process(src, dst, w, h, y0, H, P, L, blur) {
   const useSel = aS || aH || aL || gS || wS;
   const cl = blur ? P.clarity / 100 * 0.9 : 0;
   const vg = clamp(P.vignette, 0, 100) / 100 * 0.7;
-  const ts = tintVec(P.shHue, clamp(P.shAmt, 0, 100)), th = tintVec(P.hiHue, clamp(P.hiAmt, 0, 100));
-  const split = P.shAmt > 0 || P.hiAmt > 0;
+  const ts = tintSum(P.shT || []), th = tintSum(P.hiT || []);
+  const split = ts[0] || ts[1] || ts[2] || th[0] || th[1] || th[2];
   let bx0, btx;
   if (cl) {
     bx0 = new Int32Array(w); btx = new Float32Array(w);
@@ -435,23 +462,23 @@ function process(src, dst, w, h, y0, H, P, L, blur) {
       if (cl) {
         const bd = blur.d, x0 = bx0[x], tx = btx[x];
         const bl = (bd[brow0 + x0] * (1 - tx) + bd[brow0 + x0 + 1] * tx) * (1 - bty) + (bd[brow1 + x0] * (1 - tx) + bd[brow1 + x0 + 1] * tx) * bty;
-        const yn = Y / 127.5 - 1, add = cl * (0.2126 * sr + 0.7152 * sg + 0.0722 * sb - bl) * (1 - yn * yn);
+        const yn = clamp(Y / 127.5 - 1, -1, 1), add = cl * (0.2126 * sr + 0.7152 * sg + 0.0722 * sb - bl) * (1 - yn * yn);
         r += add; g += add; b += add; Y += add;
       }
       const mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b), c = mx - mn;
       let k = sat;
-      if (vib) k *= 1 + vib * (1 - (mx > 1 ? c / mx : 0));
+      if (vib) k *= Math.max(0, 1 + vib * (1 - (mx > 1 ? c / mx : 0)));
       if (useSel && c > 6) {
         let hh = mx === r ? (g - b) / c : mx === g ? (b - r) / c + 2 : (r - g) / c + 4;
         hh *= 60; if (hh < 0) hh += 360;
-        const cw = c > 40 ? 1 : c / 40;
+        const cw = c >= 40 ? 1 : (c - 6) / 34; // ramps up from zero, so pale skies get no hard edge
         const wa = band(hh, 150, 178, 245, 272) * cw;
         const wg = band(hh, 58, 80, 140, 165) * cw;
         const ww = (hh > 180 ? band(hh, 340, 358, 361, 362) : band(hh, -1, 0, 50, 72)) * cw;
         k *= Math.max(0, 1 + aS * wa + gS * wg + wS * ww);
         if (wa > 0) {
           if (aH) g += aH * wa * c * 0.45;
-          if (aL) { const m = 1 + aL * 0.5 * wa; r *= m; g *= m; b *= m; }
+          if (aL) { const m = Math.max(0, 1 + aL * 0.5 * wa); r *= m; g *= m; b *= m; }
           Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
         }
       }
@@ -497,22 +524,23 @@ function frameDims(iw, ih, angle) {
   const k = Math.min(iw / (iw * c + ih * s), ih / (iw * s + ih * c));
   return { fw: iw * k, fh: ih * k };
 }
-function drawGeom(ctx, img, iw, ih, angle, rect, outW) {
+/* fills exactly outW × outH; the image is overscanned by a pixel so edges never come out transparent */
+function drawGeom(ctx, img, iw, ih, angle, rect, outW, outH) {
   const { fw, fh } = frameDims(iw, ih, angle);
-  const k = outW / (rect.w * fw);
   ctx.save();
   ctx.imageSmoothingQuality = 'high';
-  ctx.translate(-rect.x * fw * k + fw * k / 2, -rect.y * fh * k + fh * k / 2);
+  ctx.scale(outW / (rect.w * fw), outH / (rect.h * fh));
+  ctx.translate(-rect.x * fw + fw / 2, -rect.y * fh + fh / 2);
   ctx.rotate(angle * Math.PI / 180);
-  ctx.drawImage(img, -iw * k / 2, -ih * k / 2, iw * k, ih * k);
+  ctx.drawImage(img, -iw / 2 - 1, -ih / 2 - 1, iw + 2, ih + 2);
   ctx.restore();
 }
-const ratioN = (ph) => { const a = ASPECTS.find((x) => x[0] === ph.aspect); return !a || a[2] === null ? null : a[2] === 0 ? 1 : a[2] * ph.h / ph.w; };
-function fitAspect(rN, cx, cy) {
-  const w = rN >= 1 ? 1 : rN, h = rN >= 1 ? 1 / rN : 1;
-  return { x: clamp(cx - w / 2, 0, 1 - w), y: clamp(cy - h / 2, 0, 1 - h), w, h };
+function outSize(iw, ih, angle, crop) {
+  const { fw, fh } = frameDims(iw, ih, angle);
+  const w = crop.w * fw, h = crop.h * fh, k = w * h > 16e6 ? Math.sqrt(16e6 / (w * h)) : 1;
+  return [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))];
 }
-function outDims(ph) { const { fw, fh } = frameDims(ph.w, ph.h, ph.angle); return [Math.round(ph.crop.w * fw), Math.round(ph.crop.h * fh)]; }
+const ratioN = (ph) => { const r = RATIOS[ph.aspect]; return r == null ? null : r === 0 ? 1 : r * ph.h / ph.w; };
 
 /* ================= analysis (fixed rules only) ================= */
 function percentile(hist, total, q) { let s = 0; const t = total * q; for (let i = 0; i < 256; i++) { s += hist[i]; if (s >= t) return i; } return 255; }
@@ -528,7 +556,7 @@ function detectHorizon(lum, W, H) {
     if (a > 1.6 * Math.abs(gx) && a > 12) { gyA[i] = a; gh[Math.min(255, a >> 2)]++; cnt++; }
   }
   if (cnt < W) return { found: false };
-  let keep = Math.min(cnt, W * H * 0.07), thr = 255, acc = 0;
+  const keep = Math.min(cnt, W * H * 0.07); let thr = 255, acc = 0;
   for (; thr > 0; thr--) { acc += gh[thr]; if (acc >= keep) break; }
   const xs = [], ys = [], ws = []; let wsum = 0;
   const cx = (W - 1) / 2, cy = (H - 1) / 2;
@@ -537,7 +565,7 @@ function detectHorizon(lum, W, H) {
     if (a >= thr * 4) { const wv = Math.min(a, 240); xs.push(x - cx); ys.push(y - cy); ws.push(wv); wsum += wv; }
   }
   const n = xs.length; if (n < W * 0.5) return { found: false };
-  const off = H, bins = new Float32Array(2 * H + 2);
+  const off = H + W, bins = new Float32Array(2 * off + 2);
   const scores = []; let best = -1, bestI = 0, bestRho = 0;
   for (let ai = 0, deg = -12; deg <= 12.001; deg += 0.25, ai++) {
     const t = deg * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
@@ -556,7 +584,8 @@ function detectHorizon(lum, W, H) {
   const conf = best / ((wsum / n) * W);
   const sorted = scores.slice().sort((a, b) => a - b), med = sorted[sorted.length >> 1];
   const pos = (cy + bestRho / Math.cos(deg * Math.PI / 180)) / (H - 1);
-  return { found: conf > 1.1 && best > med * 1.25 && pos > 0.08 && pos < 0.92, deg, pos, conf };
+  /* an edge at the very limit of the search range is not a horizon we can trust */
+  return { found: conf > 1.1 && best > med * 1.25 && pos > 0.08 && pos < 0.92 && Math.abs(deg) < 11.5, deg, pos, conf };
 }
 
 function integral(a, W, H) {
@@ -572,8 +601,8 @@ function scoreCrop(an, r) {
   const x1 = clamp(Math.round((r.x + r.w) * W), x0 + 4, W), y1 = clamp(Math.round((r.y + r.h) * H), y0 + 4, H);
   const m = rsum(s.I, W, x0, y0, x1, y1);
   const keep = s.tot > 0 ? m / s.tot : 1;
-  let comp = 0.5, hasSubj = an.subject.strong;
-  if (hasSubj) {
+  let comp = 0.5;
+  if (an.subject.strong) {
     const sx = (an.subject.x - r.x) / r.w, sy = (an.subject.y - r.y) / r.h;
     if (sx < 0.04 || sx > 0.96 || sy < 0.04 || sy > 0.96) comp = 0;
     else {
@@ -585,32 +614,74 @@ function scoreCrop(an, r) {
   const bx = Math.max(1, Math.round((x1 - x0) * 0.06)), by = Math.max(1, Math.round((y1 - y0) * 0.06));
   const inner = rsum(s.I, W, x0 + bx, y0 + by, x1 - bx, y1 - by);
   const aAll = (x1 - x0) * (y1 - y0), aIn = (x1 - x0 - 2 * bx) * (y1 - y0 - 2 * by);
-  const dens = m > 0 ? ((m - inner) / (aAll - aIn)) / (m / aAll) : 1;
+  const dens = m > 0 && aAll > aIn ? ((m - inner) / (aAll - aIn)) / (m / aAll) : 1;
   const clean = clamp(1.45 - dens * 0.75, 0, 1);
   let hz = null;
   if (an.horizon.found) {
     const hy = (an.horizon.pos - r.y) / r.h;
     if (hy > 0.03 && hy < 0.97) hz = Math.max(Math.exp(-((Math.min(Math.abs(hy - 1 / 3), Math.abs(hy - 2 / 3)) / 0.07) ** 2)), 0.1);
   }
-  const base = hz === null ? 0.55 * comp + 0.27 * keep + 0.18 * clean : 0.42 * comp + 0.22 * keep + 0.14 * clean + 0.22 * hz;
-  return { score: base, comp, keep, clean, hz, hasSubj };
+  return hz === null ? 0.55 * comp + 0.27 * keep + 0.18 * clean : 0.42 * comp + 0.22 * keep + 0.14 * clean + 0.22 * hz;
 }
+/* Connected region of strong local contrast around a seed cell, as a box in 0..1. Null when it is not a compact thing. */
+function growBox(cm, sw, sh, sx, sy, lenient) {
+  let bi = -1, bv = 0;
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    const x = clamp(sx + dx, 0, sw - 1), y = clamp(sy + dy, 0, sh - 1), j = y * sw + x;
+    if (cm[j] > bv) { bv = cm[j]; bi = j; }
+  }
+  if (bi < 0 || !(bv > 0)) return null;
+  const thr = bv * 0.45, seen = new Uint8Array(sw * sh), stack = [bi]; seen[bi] = 1;
+  let x0 = sw, y0 = sh, x1 = 0, y1 = 0, cnt = 0;
+  while (stack.length) {
+    const j = stack.pop(), x = j % sw, y = (j / sw) | 0; cnt++;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    if (x > 0 && !seen[j - 1] && cm[j - 1] >= thr) { seen[j - 1] = 1; stack.push(j - 1); }
+    if (x < sw - 1 && !seen[j + 1] && cm[j + 1] >= thr) { seen[j + 1] = 1; stack.push(j + 1); }
+    if (y > 0 && !seen[j - sw] && cm[j - sw] >= thr) { seen[j - sw] = 1; stack.push(j - sw); }
+    if (y < sh - 1 && !seen[j + sw] && cm[j + sw] >= thr) { seen[j + sw] = 1; stack.push(j + sw); }
+  }
+  const bw = (x1 - x0 + 1) / sw, bh = (y1 - y0 + 1) / sh;
+  if (cnt < 4 || cnt / (sw * sh) > (lenient ? 0.45 : 0.3) || bw > 0.75 || bh > 0.9) return null;
+  return { x0: x0 / sw, y0: y0 / sh, x1: (x1 + 1) / sw, y1: (y1 + 1) / sh };
+}
+/* Crops built around the subject: never cut it, and keep it where the photographer put it.
+   Which way a person faces cannot be told by rules, so the subject is never pushed to one side. */
+function subjectCrops(B, ph) {
+  const bw = B.x1 - B.x0, bh = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
+  /* what must stay inside: generous above (heads), modest at the sides, a little below */
+  const px0 = Math.max(0, B.x0 - 0.3 * bw), px1 = Math.min(1, B.x1 + 0.3 * bw), py0 = Math.max(0, B.y0 - 0.3 * bh), py1 = Math.min(1, B.y1 + 0.08 * bh);
+  const fit = (pos, size, lo, hi, keepStart) => {
+    if (hi - lo <= size) { if (pos > lo) pos = lo; if (pos + size < hi) pos = hi - size; }
+    else pos = keepStart ? lo : (lo + hi) / 2 - size / 2;
+    return clamp(pos, 0, 1 - size);
+  };
+  const place = (w, h) => ({ x: fit(cx - cx * w, w, px0, px1, false), y: fit(cy - cy * h, h, py0, py1, true), w, h });
+  const s = clamp(Math.max(bh / 0.6, bw / 0.5, px1 - px0, py1 - py0), 0.5, 0.9);
+  const out = [{ key: 'tight', aspect: 'orig', rect: place(s, s) }];
+  for (const key of ['4:5', '1:1', '16:9', '9:16']) {
+    const rN = RATIOS[key] * ph.h / ph.w;
+    out.push({ key, aspect: key, rect: place(rN >= 1 ? 1 : rN, rN >= 1 ? 1 / rN : 1) });
+  }
+  return out;
+}
+/* best rectangle per shape; "tight" keeps the photo's own shape but must be smaller than the full frame */
 function suggestCrops(an, ph) {
+  if (an.subject.box) return subjectCrops(an.subject.box, ph);
   const out = [];
-  for (const key of ['orig', '4:5', '1:1', '16:9', '9:16']) {
-    const a = ASPECTS.find((x) => x[0] === key);
-    const rN = a[2] === 0 ? 1 : a[2] * ph.h / ph.w;
+  for (const [key, aspect] of [['tight', 'orig'], ['4:5', '4:5'], ['1:1', '1:1'], ['16:9', '16:9'], ['9:16', '9:16']]) {
+    const r0 = RATIOS[aspect], rN = r0 === 0 ? 1 : r0 * ph.h / ph.w;
     const mw = rN >= 1 ? 1 : rN, mh = rN >= 1 ? 1 / rN : 1;
     let best = null;
-    for (const sc of [1, 0.92, 0.84, 0.76, 0.68, 0.6]) {
+    for (const sc of key === 'tight' ? [0.9, 0.82, 0.74, 0.66, 0.6] : [1, 0.92, 0.84, 0.76, 0.68, 0.6]) {
       const w = mw * sc, h = mh * sc, nx = w < 0.999 ? 20 : 0, ny = h < 0.999 ? 20 : 0;
       for (let iy = 0; iy <= ny; iy++) for (let ix = 0; ix <= nx; ix++) {
         const r = { x: nx ? (1 - w) * ix / nx : 0, y: ny ? (1 - h) * iy / ny : 0, w, h };
-        const s = scoreCrop(an, r), v = s.score * Math.pow(sc, 0.35);
-        if (!best || v > best.v) best = { v, rect: r, s };
+        const v = scoreCrop(an, r) * Math.pow(sc, 0.35);
+        if (!best || v > best.v) best = { v, rect: r };
       }
     }
-    out.push({ key, label: a[1], rect: best.rect, score: best.s.score });
+    out.push({ key, aspect, rect: best.rect });
   }
   return out;
 }
@@ -619,23 +690,21 @@ function analyze(ph) {
   const src = ph.proxy, { fw, fh } = frameDims(src.width, src.height, ph.angle);
   const sc = 320 / Math.max(fw, fh), W = Math.max(16, Math.round(fw * sc)), H = Math.max(16, Math.round(fh * sc));
   const c = mk(W, H), cx = c.getContext('2d', { willReadFrequently: true });
-  drawGeom(cx, src, src.width, src.height, ph.angle, FULL, W);
+  drawGeom(cx, src, src.width, src.height, ph.angle, FULL, W, H);
   const d = cx.getImageData(0, 0, W, H).data, n = W * H;
   const lum = new Float32Array(n), hist = new Float64Array(256);
-  let clipHi = 0, clipLo = 0, satSum = 0, satN = 0, chroN = 0;
-  const hw = new Float64Array(36), hc = new Float64Array(36), hr = new Float64Array(36), hg = new Float64Array(36), hb = new Float64Array(36);
-  let nN = 0, nR = 0, nG = 0, nB = 0, fAqua = 0, fGreen = 0, fWarm = 0, chroTot = 0;
+  let clipHi = 0, satSum = 0, satN = 0, chroN = 0, fAqua = 0, fGreen = 0, fWarm = 0, chroTot = 0;
   for (let i = 0, j = 0; j < n; i += 4, j++) {
     const r = d[i], g = d[i + 1], b = d[i + 2], Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    lum[j] = Y; hist[Y | 0]++;
+    lum[j] = Y; hist[Math.min(255, Y | 0)]++;
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), ch = mx - mn;
-    if (mx >= 252) clipHi++; if (Y <= 3) clipLo++;
+    if (mx >= 252) clipHi++;
     if (Y > 25 && Y < 242) { satSum += mx ? ch / mx : 0; satN++; }
     if (ch > 26) {
       let hh = mx === r ? (g - b) / ch : mx === g ? (b - r) / ch + 2 : (r - g) / ch + 4; hh *= 60; if (hh < 0) hh += 360;
-      const bi = Math.min(35, (hh / 10) | 0); hw[bi] += ch; hc[bi]++; hr[bi] += r; hg[bi] += g; hb[bi] += b; chroN++; chroTot += ch;
+      chroN++; chroTot += ch;
       if (hh >= 160 && hh < 262) fAqua += ch; else if (hh >= 65 && hh < 160) fGreen += ch; else if (hh < 62 || hh >= 335) fWarm += ch;
-    } else { nN++; nR += r; nG += g; nB += b; }
+    }
   }
   const p = {}; for (const [k, q] of [['p005', 0.005], ['p10', 0.1], ['p50', 0.5], ['p90', 0.9], ['p95', 0.95], ['p995', 0.995]]) p[k] = percentile(hist, n, q);
   /* white point: average of the brightest, not-too-colorful, unclipped pixels */
@@ -648,19 +717,7 @@ function analyze(ph) {
   }
   const hues = chroTot ? { aqua: fAqua / chroTot, green: fGreen / chroTot, warm: fWarm / chroTot, chroma: chroN / n } : { aqua: 0, green: 0, warm: 0, chroma: 0 };
   let wbEst = null;
-  if (wn > n * 0.008) wbEst = { t: Math.log(wb / wr) / 0.7 * 100, n: Math.log(wg / Math.sqrt(wr * wb)) / 0.25 * 100 };
-
-  /* palette: strongest hue clusters + the neutral remainder */
-  const pal = [], used = new Uint8Array(36);
-  for (let it = 0; it < 4; it++) {
-    let bi = -1, bv = 0; for (let k = 0; k < 36; k++) if (!used[k] && hw[k] > bv) { bv = hw[k]; bi = k; }
-    if (bi < 0) break;
-    let cN = 0, r = 0, g = 0, b = 0;
-    for (let o = -2; o <= 2; o++) { const k = (bi + o + 36) % 36; if (used[k]) continue; used[k] = 1; cN += hc[k]; r += hr[k]; g += hg[k]; b += hb[k]; }
-    if (cN / n > 0.025) pal.push({ share: cN / n, rgb: [r / cN, g / cN, b / cN] });
-  }
-  if (nN / n > 0.04) pal.push({ share: nN / n, rgb: [nR / nN, nG / nN, nB / nN] });
-  pal.sort((a, b) => b.share - a.share);
+  if (wn > n * 0.008 && wr > 0 && wg > 0 && wb > 0) wbEst = { t: Math.log(wb / wr) / 0.7 * 100, n: Math.log(wg / Math.sqrt(wr * wb)) / 0.25 * 100 };
 
   const horizon = detectHorizon(lum, W, H);
 
@@ -684,14 +741,28 @@ function analyze(ph) {
   let sal = new Float32Array(m);
   for (let j = 0; j < m; j++) sal[j] = 0.6 * Math.min(sc1[j] / (a1 * 3), 1) + 0.4 * Math.min(se[j] / (a2 * 4), 1);
   sal = boxBlur(sal, sw, sh, 2);
-  const blob = boxBlur(boxBlur(sal, sw, sh, Math.max(2, Math.round(Math.max(sw, sh) * 0.05))), sw, sh, Math.max(2, Math.round(Math.max(sw, sh) * 0.05)));
-  let pk = 0, pj = 0, avg = 0; for (let j = 0; j < m; j++) { avg += blob[j]; if (blob[j] > pk) { pk = blob[j]; pj = j; } }
-  avg /= m;
-  const subject = { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong: pk > avg * 1.35 };
+  /* the subject: where a patch differs most from its own surroundings (so even texture, like a field, does not count) */
+  const rS = Math.max(1, Math.round(Math.max(sw, sh) * 0.015)), rL = Math.max(4, Math.round(Math.max(sw, sh) * 0.13));
+  const sL = boxBlur(cl, sw, sh, rS), sA = boxBlur(ca, sw, sh, rS), sB = boxBlur(cb, sw, sh, rS);
+  const lL = boxBlur(cl, sw, sh, rL), lA = boxBlur(ca, sw, sh, rL), lB = boxBlur(cb, sw, sh, rL);
+  const cs = new Float32Array(m); let csAvg = 0;
+  for (let j = 0; j < m; j++) { cs[j] = Math.sqrt(0.5 * (sL[j] - lL[j]) ** 2 + (sA[j] - lA[j]) ** 2 + (sB[j] - lB[j]) ** 2); csAvg += cs[j]; }
+  csAvg = csAvg / m || 1;
+  let subject;
+  if (ph.subj) {
+    const sx = clamp(Math.floor(ph.subj.x * sw), 0, sw - 1), sy = clamp(Math.floor(ph.subj.y * sh), 0, sh - 1);
+    const box = growBox(cs, sw, sh, sx, sy, true) || { x0: Math.max(0, ph.subj.x - 0.07), x1: Math.min(1, ph.subj.x + 0.07), y0: Math.max(0, ph.subj.y - 0.1), y1: Math.min(1, ph.subj.y + 0.1) };
+    subject = { x: ph.subj.x, y: ph.subj.y, strong: true, box };
+  } else {
+    const br = Math.max(2, Math.round(Math.max(sw, sh) * 0.04)), blob = boxBlur(cs, sw, sh, br);
+    let pk = 0, pj = 0; for (let j = 0; j < m; j++) if (blob[j] > pk) { pk = blob[j]; pj = j; }
+    const strong = pk > csAvg * 2;
+    const box = strong ? growBox(cs, sw, sh, pj % sw, (pj / sw) | 0, false) : null;
+    subject = box ? { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2, strong: true, box } : { x: ((pj % sw) + 0.5) / sw, y: (((pj / sw) | 0) + 0.5) / sh, strong, box: null };
+  }
   let tot = 0; for (let j = 0; j < m; j++) tot += sal[j];
 
-  const an = { hist, n, p, clipHi: clipHi / n, clipLo: clipLo / n, sat: satN ? satSum / satN : 0, hues, wbEst, pal, horizon, subject,
-    sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
+  const an = { hist, n, p, clipHi: clipHi / n, sat: satN ? satSum / satN : 0, hues, wbEst, horizon, subject, sal: { w: sw, h: sh, I: integral(sal, sw, sh), tot } };
   an.tone = suggestTone(an);
   an.crops = suggestCrops(an, ph);
   return an;
@@ -701,31 +772,71 @@ function suggestTone(an) {
   const P = { ...DEF }, f = {}, h = an.hist, n = an.n, p = an.p;
   const lut = () => { const o = new Float32Array(256); for (let i = 0; i < 256; i++) o[i] = toneCurve(i, P, 1); return o; };
   const frac = (L, lo, hi) => { let s = 0; for (let i = 0; i < 256; i++) if (L[i] >= lo && L[i] <= hi) s += h[i]; return s / n; };
-  const med = p.p50 / 255, backlit = med < 0.4 && p.p95 / 255 > 0.85;
+  const med = p.p50 / 255, flat = p.p995 - p.p005 < 12; // a blank frame has nothing to stretch
+  const night = med < 0.2, backlit = med < 0.4 && p.p95 / 255 > 0.85;
+  f.med = med;
+  if (flat) return f;
   let target = med;
   if (med < 0.4) target = med + (0.45 - med) * (backlit ? 0.4 : 0.85);
   else if (med > 0.6) target = med - (med - 0.55) * 0.8;
   if (target !== med) {
     let be = 0, bd = 9;
     for (let e = -75; e <= 75; e++) { P.exposure = e; const dd = Math.abs(toneCurve(p.p50, P, 1) - target); if (dd < bd) { bd = dd; be = e; } }
+    if (night) be = Math.min(be, 15); // a night scene should stay night
     P.exposure = Math.abs(be) >= 5 ? be : 0;
     if (P.exposure) f.exposure = P.exposure;
+    /* fog, snow and white walls are meant to be bright: only darken by default when parts are really blown out */
+    if (P.exposure < 0 && an.clipHi <= 0.03) { f.optional = true; P.exposure = 0; }
   }
-  f.med = med; f.backlit = backlit;
   let L = lut();
   const hi = L[p.p995], lo = L[p.p005];
-  f.lo = lo; f.hi = hi;
-  if (hi < 0.94) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
+  if (hi < 0.94 && !night) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
   if (lo > 0.055) { f.blacks = -Math.round(clamp((lo - 0.02) / 0.12 * 100, 0, 70)); if (f.blacks > -5) delete f.blacks; }
   P.whites = f.whites || 0; P.blacks = f.blacks || 0; L = lut();
   const fh = frac(L, 0.93, 2), fl = frac(L, -1, 0.09);
-  f.fracHi = fh; f.fracLo = fl;
   if (fh > 0.06) f.highlights = -Math.round(clamp(18 + fh * 220, 18, 60));
-  if (fl > 0.14 || backlit) f.shadows = Math.round(clamp(15 + fl * 110 + (backlit ? 12 : 0), 15, 55));
+  if (!night && (fl > 0.14 || backlit)) f.shadows = Math.round(clamp(15 + fl * 110 + (backlit ? 12 : 0), 15, 55));
   P.highlights = f.highlights || 0; P.shadows = f.shadows || 0; L = lut();
-  const spread = L[p.p90] - L[p.p10]; f.spread = spread;
-  if (spread < 0.36) f.contrast = Math.round(clamp((0.44 - spread) * 130, 8, 26));
+  const spread = L[p.p90] - L[p.p10];
+  if (spread < 0.36 && !night) f.contrast = Math.round(clamp((0.44 - spread) * 130, 8, 26));
   return f;
+}
+
+/* the fixes this photo gets by default, each one a switch */
+function makeBase(an) {
+  const t = an.tone, fixes = [];
+  if (t.exposure) fixes.push({ id: t.exposure > 0 ? 'brighten' : 'darken', p: { exposure: t.exposure }, on: !t.optional });
+  const lv = {}; for (const k of ['whites', 'blacks', 'contrast']) if (t[k]) lv[k] = t[k];
+  if (Object.keys(lv).length) fixes.push({ id: 'haze', p: lv, on: true });
+  if (t.highlights || an.clipHi > 0.02) fixes.push({ id: 'highlights', p: { highlights: t.highlights || -30 }, on: true });
+  if (t.shadows) fixes.push({ id: 'shadows', p: { shadows: t.shadows }, on: true });
+  const sunset = an.hues.warm > 0.5 && t.med < 0.55, wb = an.wbEst;
+  if (!sunset && wb && (Math.abs(wb.t) > 9 || Math.abs(wb.n) > 12)) {
+    const tt = Math.round(clamp(wb.t * 0.7, -32, 32)), nn = Math.round(clamp(wb.n * 0.7, -25, 25)), p = {};
+    if (Math.abs(tt) >= 4) p.temp = tt; if (Math.abs(nn) >= 4) p.tint = nn;
+    const id = Math.abs(wb.t) > 9 ? (wb.t > 0 ? 'castBlue' : 'castYellow') : (wb.n > 0 ? 'castGreen' : 'castMagenta');
+    /* a cool cast is nearly always a fault; a mild warm one is often the mood, so it is offered but left off */
+    if (Object.keys(p).length) fixes.push({ id, p, on: wb.t > 12 || wb.t < -28 || Math.abs(wb.n) > 16 });
+  }
+  if (an.sat < 0.2 && an.hues.chroma > 0.05) fixes.push({ id: 'richer', p: { vibrance: Math.round(clamp((0.3 - an.sat) * 230, 10, 36)) }, on: true });
+  else if (an.sat > 0.62) fixes.push({ id: 'calmer', p: { saturation: -10 }, on: true });
+  const hz = an.horizon;
+  if (hz.found && Math.abs(hz.deg) >= 0.4) fixes.push({ id: 'level', angle: clamp(Math.round(-hz.deg * 10) / 10, -15, 15), on: Math.abs(hz.deg) <= 5 });
+  const h = an.hues;
+  const look = sunset ? 'golden' : h.aqua > 0.45 ? (h.warm > 0.12 ? 'tealorange' : 'clear') : h.green > 0.4 ? 'jungle' : h.chroma < 0.05 ? 'bw' : 'film';
+  return { fixes, look };
+}
+function applyDefaults(ph) {
+  ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.angle = 0; ph.fix = {}; ph.subj = null;
+  for (const f of ph.base.fixes) { if (f.id === 'level') { if (f.on) ph.angle = f.angle; } else ph.fix[f.id] = f.on; }
+}
+/* measure once, on the untouched photo, so later straightening or cropping does not shift the advice */
+function initPhoto(ph) {
+  ph.angle = 0; ph.subj = null;
+  const an = analyze(ph);
+  ph.base = makeBase(an);
+  applyDefaults(ph);
+  if (ph.angle === 0) { ph.an = an; ph.anKey = anKeyOf(ph); } else { ph.an = null; ph.anKey = ''; }
 }
 
 /* ================= sample (drawn by code, with deliberate flaws) ================= */
@@ -773,9 +884,8 @@ function makeSample() {
   const crown = [1560, 560];
   g.strokeStyle = '#4f3d2b';
   for (let t = 0; t < 1; t += 0.02) {
-    const q = (a, b, c2) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c2;
-    const q2 = (a, b, c2) => { const u = t + 0.03; return (1 - u) * (1 - u) * a + 2 * (1 - u) * u * b + u * u * c2; };
-    g.lineWidth = 48 - 24 * t; g.beginPath(); g.moveTo(q(1730, 1790, crown[0]), q(1420, 950, crown[1])); g.lineTo(q2(1730, 1790, crown[0]), q2(1420, 950, crown[1])); g.stroke();
+    const q = (a, b, c2, u) => (1 - u) * (1 - u) * a + 2 * (1 - u) * u * b + u * u * c2;
+    g.lineWidth = 48 - 24 * t; g.beginPath(); g.moveTo(q(1730, 1790, crown[0], t), q(1420, 950, crown[1], t)); g.lineTo(q(1730, 1790, crown[0], t + 0.03), q(1420, 950, crown[1], t + 0.03)); g.stroke();
   }
   const greens = ['#1d4a2a', '#2a6233', '#3c7b3a', '#245a30'];
   for (let k = 0; k < 13; k++) {
@@ -805,7 +915,7 @@ function makeSample() {
 }
 
 /* ================= photos ================= */
-const lru = [];
+const TW = 172, TH = 128, lru = [];
 async function decode(file) {
   try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { /* fall through */ }
   const url = URL.createObjectURL(file);
@@ -813,18 +923,27 @@ async function decode(file) {
 }
 const imgW = (i) => i.naturalWidth || i.width, imgH = (i) => i.naturalHeight || i.height;
 function newPhoto(name) {
-  return { id: ++uid, name, file: null, sample: false, w: 0, h: 0, proxy: null, thumb: mk(172, 128), bad: false,
-    adjust: { ...DEF }, look: 'none', lookAmt: 100, angle: 0, crop: { ...FULL }, aspect: 'free', an: null, anKey: '' };
+  return { id: ++uid, name, file: null, sample: false, w: 0, h: 0, proxy: null, thumb: mk(TW, TH), thumb0: null, base: null, fix: {},
+    adjust: { ...DEF }, look: 'none', lookAmt: LOOK_AMT, angle: 0, crop: { ...FULL }, aspect: 'free', subj: null, an: null, anKey: '' };
 }
-function drawThumb(ph, from) {
-  const t = ph.thumb.getContext('2d'), sw = from.width, sh = from.height, s = Math.max(172 / sw, 128 / sh);
-  t.imageSmoothingQuality = 'high';
-  t.drawImage(from, (172 - sw * s) / 2, (128 - sh * s) / 2, sw * s, sh * s);
+function cover(ctx, from) {
+  const sw = from.width, sh = from.height, s = Math.max(TW / sw, TH / sh);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(from, (TW - sw * s) / 2, (TH - sh * s) / 2, sw * s, sh * s);
+}
+/* strip thumbnail: the stored small original with this photo's current grade */
+function gradeThumb(ph) {
+  if (!ph.thumb0) return;
+  const src = ph.thumb0.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, TW, TH), P = finalParams(ph);
+  process(src.data, src.data, TW, TH, 0, TH, P, buildLUTs(P), P.clarity ? makeBlur(ph.thumb0) : null);
+  ph.thumb.getContext('2d').putImageData(src, 0, 0);
 }
 async function ensureProxy(ph) {
   if (!ph.proxy) {
     const img = await decode(ph.file);
-    const iw = imgW(img), ih = imgH(img), s = Math.min(1, 2048 / Math.max(iw, ih));
+    const iw = imgW(img), ih = imgH(img);
+    if (!(iw > 0 && ih > 0)) throw new Error('empty image');
+    const s = Math.min(1, 2048 / Math.max(iw, ih));
     const c = mk(Math.max(1, Math.round(iw * s)), Math.max(1, Math.round(ih * s)));
     const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height);
     if (img.close) img.close();
@@ -832,32 +951,40 @@ async function ensureProxy(ph) {
   }
   if (!ph.sample) {
     const i = lru.indexOf(ph); if (i >= 0) lru.splice(i, 1); lru.push(ph);
-    while (lru.length > 4) { const old = lru.shift(); if (old !== cur()) { old.proxy = null; old.an = null; old.anKey = ''; } else lru.push(old); }
+    for (let k = 0; lru.length > 4 && k < lru.length;) { const old = lru[k]; if (old === cur() || old === ph) { k++; continue; } lru.splice(k, 1); old.proxy = null; old.an = null; old.anKey = ''; }
   }
 }
+function prepare(ph) { ph.thumb0 = mk(TW, TH); cover(ph.thumb0.getContext('2d'), ph.proxy); initPhoto(ph); gradeThumb(ph); }
+let adding = false;
 async function addFiles(files) {
   const list = [...files].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif|avif|gif|bmp)$/i.test(f.name));
-  if (!list.length) return;
-  let first = null, failed = 0, heic = 0, done = 0;
-  for (const f of list) {
-    toast(`正在读取 ${++done} / ${list.length}`, 0);
-    const ph = newPhoto(f.name); ph.file = f;
-    try { await ensureProxy(ph); } catch (e) { failed++; if (/hei[cf]/i.test(f.name + f.type)) heic++; continue; }
-    drawThumb(ph, ph.proxy);
-    if (state.photos.length === 1 && state.photos[0].sample) { state.photos = []; state.cur = -1; }
-    state.photos.push(ph);
-    if (!first) { first = ph; await select(state.photos.length - 1); } else renderStrip();
-    await tick();
-  }
-  if (failed) toast(heic ? `${failed} 张没能打开。这个浏览器解不了 HEIC，请先在相册里导出为 JPEG，或用 Safari 打开本页。` : `${failed} 张没能打开，可能不是浏览器支持的图片格式。`, 7000);
-  else toast(`已添加 ${list.length} 张`, 1800);
+  if (!list.length || adding) return;
+  adding = true;
+  let first = true, failed = 0, heic = 0, done = 0, ok = 0;
+  try {
+    for (const f of list) {
+      toast(tr('t.reading', { i: ++done, n: list.length }), 0);
+      const ph = newPhoto(f.name); ph.file = f;
+      try { await ensureProxy(ph); prepare(ph); } catch (e) { failed++; if (/hei[cf]/i.test(f.name + f.type)) heic++; continue; }
+      if (state.photos.length === 1 && state.photos[0].sample) { state.photos = []; state.cur = -1; }
+      state.photos.push(ph); ok++;
+      if (first) { first = false; await select(state.photos.length - 1); } else renderStrip();
+      await tick();
+    }
+  } finally { adding = false; }
+  if (failed) toast(tr(heic ? 't.heic' : 't.bad', { n: failed }), 7000);
+  else toast(tr('t.added', { n: ok }), 1800);
   renderStrip();
 }
+let selectSeq = 0;
 async function select(i) {
   const ph = state.photos[i]; if (!ph) return;
-  try { await ensureProxy(ph); } catch (e) { toast('这张照片读取失败', 3000); return; }
-  state.cur = i; geomKey = '';
-  renderStrip(); syncControls(); render(false);
+  const seq = ++selectSeq;
+  try { await ensureProxy(ph); } catch (e) { toast(tr('t.read'), 3000); return; }
+  if (seq !== selectSeq || !state.photos.includes(ph)) return; // a later click won
+  state.cur = state.photos.indexOf(ph); geomKey = '';
+  if (!ph.base) prepare(ph);
+  renderStrip(); renderPanels(); render(false);
 }
 
 /* ================= rendering ================= */
@@ -883,7 +1010,7 @@ function ensureGeom(fast) {
   if (key === geomKey) return;
   geomKey = key;
   geomC.width = gw; geomC.height = gh; procC.width = gw; procC.height = gh;
-  drawGeom(gctx, ph.proxy, ph.proxy.width, ph.proxy.height, ph.angle, rect, gw);
+  drawGeom(gctx, ph.proxy, ph.proxy.width, ph.proxy.height, ph.angle, rect, gw, gh);
   srcData = gctx.getImageData(0, 0, gw, gh); outData = new ImageData(gw, gh); blurMap = null;
 }
 function renderColor() {
@@ -891,10 +1018,10 @@ function renderColor() {
   if (P.clarity && !blurMap) blurMap = makeBlur(geomC);
   process(srcData.data, outData.data, geomC.width, geomC.height, 0, geomC.height, P, buildLUTs(P), P.clarity ? blurMap : null);
   pctx.putImageData(outData, 0, 0);
-  drawHist();
+  if ($('#more').open) drawHist();
 }
 function render(fast) {
-  wantFast = wantFast || fast; if (fast === false) wantFast = false;
+  wantFast = fast === false ? false : wantFast || fast;
   if (!rafId) rafId = requestAnimationFrame(doRender);
 }
 function doRender() {
@@ -902,30 +1029,21 @@ function doRender() {
   const fast = wantFast; wantFast = false;
   ensureGeom(fast); renderColor(); paint();
   clearTimeout(idleT);
-  idleT = setTimeout(() => { if (fast) { ensureGeom(false); renderColor(); paint(); } onIdle(); }, fast ? 180 : 60);
+  idleT = setTimeout(() => { const now = cur(); if (!now || !now.proxy) return; if (fast) { ensureGeom(false); renderColor(); paint(); } onIdle(); }, fast ? 180 : 60);
 }
 function onIdle() {
-  const ph = cur(); if (!ph) return;
-  const key = ph.id + '|' + ph.angle;
-  if (ph.anKey !== key) {
-    ph.an = analyze(ph); ph.anKey = key;
-    /* light and color advice is measured once per photo, so straightening does not shift it */
-    if (ph.base) Object.assign(ph.an, ph.base);
-    else ph.base = { tone: ph.an.tone, wbEst: ph.an.wbEst, sat: ph.an.sat, clipHi: ph.an.clipHi, hues: ph.an.hues, pal: ph.an.pal };
-    renderDiag(); renderSugs();
-  }
-  else if (state.tab === 'crop') renderSugs();
-  renderMeters(); renderMeta();
-  if (state.tab !== 'crop') { drawThumb(ph, procC); }
-  if (state.tab === 'color') renderLooks();
+  const ph = cur(); if (!ph || !ph.proxy) return;
+  const key = anKeyOf(ph);
+  if (ph.anKey !== key) { ph.an = analyze(ph); ph.anKey = key; if (state.tab === 'crop') paint(); }
+  if (state.tab === 'crop') renderCrops();
+  else { const t = ph.thumb.getContext('2d'); t.clearRect(0, 0, TW, TH); cover(t, procC); }
+  if (state.tab === 'style') renderLooks();
 }
-
 function paint() {
   const ph = cur(); if (!ph) return;
   vctx.clearRect(0, 0, view.width, view.height);
   vctx.imageSmoothingQuality = 'high';
   vctx.drawImage(state.compare ? geomC : procC, dest.x, dest.y, dest.w, dest.h);
-  $('#badge').hidden = !state.compare; if (state.compare) $('#badge').textContent = '原图（未调色）';
   if (state.tab === 'crop') paintCrop(ph);
 }
 const cropPx = (ph) => ({ x: dest.x + ph.crop.x * dest.w, y: dest.y + ph.crop.y * dest.h, w: ph.crop.w * dest.w, h: ph.crop.h * dest.h });
@@ -935,35 +1053,12 @@ function paintCrop(ph) {
   c.fillStyle = 'rgba(10,12,12,0.6)';
   c.beginPath(); c.rect(dest.x, dest.y, dest.w, dest.h); c.rect(r.x, r.y, r.w, r.h); c.fill('evenodd');
   const line = (path, wid, col) => { c.beginPath(); path(); c.lineWidth = wid * d; c.strokeStyle = col; c.stroke(); };
-  const guide = (path) => { line(path, 2.2, 'rgba(0,0,0,0.35)'); line(path, 1, 'rgba(255,255,255,0.85)'); };
-  const X = (u) => r.x + u * r.w, Y = (v) => r.y + v * r.h;
-  const grid = (a, b) => guide(() => { for (const u of [a, b]) { c.moveTo(X(u), r.y); c.lineTo(X(u), r.y + r.h); c.moveTo(r.x, Y(u)); c.lineTo(r.x + r.w, Y(u)); } });
-  if (state.overlay === 'thirds') grid(1 / 3, 2 / 3);
-  else if (state.overlay === 'phi') grid(0.382, 0.618);
-  else if (state.overlay === 'diag') guide(() => { c.moveTo(r.x, r.y); c.lineTo(X(1), Y(1)); c.moveTo(X(1), r.y); c.lineTo(r.x, Y(1)); });
-  else if (state.overlay === 'center') guide(() => { c.moveTo(X(0.5), r.y); c.lineTo(X(0.5), Y(1)); c.moveTo(r.x, Y(0.5)); c.lineTo(X(1), Y(0.5)); });
-  else if (state.overlay === 'spiral') guide(() => {
-    c.save(); c.translate(r.x, r.y); c.scale(r.w, r.h);
-    if (state.spiral & 1) { c.translate(1, 0); c.scale(-1, 1); }
-    if (state.spiral & 2) { c.translate(0, 1); c.scale(1, -1); }
-    let x = 0, y = 0, w = 1, h = 1; const k = 0.6180339887, PI = Math.PI;
-    for (let i = 0; i < 10; i++) {
-      const m = i % 4;
-      if (m === 0) { const s = w * k; c.ellipse(x + s, y + h, s, h, 0, PI, 1.5 * PI); c.moveTo(x + s, y); c.lineTo(x + s, y + h); c.moveTo(x + s, y); x += s; w -= s; }
-      else if (m === 1) { const s = h * k; c.ellipse(x, y + s, w, s, 0, 1.5 * PI, 2 * PI); c.moveTo(x, y + s); c.lineTo(x + w, y + s); y += s; h -= s; }
-      else if (m === 2) { const s = w * k; c.moveTo(x + w, y); c.ellipse(x + w - s, y, s, h, 0, 0, 0.5 * PI); c.moveTo(x + w - s, y); c.lineTo(x + w - s, y + h); c.moveTo(x + w - s, y + h); w -= s; }
-      else { const s = h * k; c.moveTo(x + w, y + h); c.ellipse(x + w, y + h - s, w, s, 0, 0.5 * PI, PI); c.moveTo(x, y + h - s); c.lineTo(x + w, y + h - s); c.moveTo(x, y + h - s); h -= s; }
-    }
-    c.restore();
-  });
-  /* subject marker and horizon line the scorer found */
-  if (ph.an && ph.anKey === ph.id + '|' + ph.angle) {
-    if (ph.an.subject.strong) {
-      const sx = dest.x + ph.an.subject.x * dest.w, sy = dest.y + ph.an.subject.y * dest.h;
-      c.setLineDash([4 * d, 3 * d]); line(() => c.arc(sx, sy, 13 * d, 0, 7), 3, 'rgba(0,0,0,0.4)'); line(() => c.arc(sx, sy, 13 * d, 0, 7), 1.5, '#ffd24a'); c.setLineDash([]);
-      c.font = `${11 * d}px sans-serif`; c.fillStyle = '#ffd24a'; c.textAlign = 'center'; c.shadowColor = 'rgba(0,0,0,0.8)'; c.shadowBlur = 3 * d;
-      c.fillText('主体', sx, sy - 18 * d); c.shadowBlur = 0;
-    }
+  const thirds = () => { for (const u of [1 / 3, 2 / 3]) { c.moveTo(r.x + u * r.w, r.y); c.lineTo(r.x + u * r.w, r.y + r.h); c.moveTo(r.x, r.y + u * r.h); c.lineTo(r.x + r.w, r.y + u * r.h); } };
+  line(thirds, 2.2, 'rgba(0,0,0,0.3)'); line(thirds, 1, 'rgba(255,255,255,0.8)');
+  const B = ph.an && ph.anKey === anKeyOf(ph) ? ph.an.subject.box : null;
+  if (B) { /* the subject the crops are built around; tap the photo to move it */
+    const sb = () => c.rect(dest.x + B.x0 * dest.w, dest.y + B.y0 * dest.h, (B.x1 - B.x0) * dest.w, (B.y1 - B.y0) * dest.h);
+    c.setLineDash([5 * d, 4 * d]); line(sb, 3, 'rgba(0,0,0,0.35)'); line(sb, 1.5, '#ffd24a'); c.setLineDash([]);
   }
   line(() => c.rect(r.x, r.y, r.w, r.h), 3, 'rgba(0,0,0,0.4)'); line(() => c.rect(r.x, r.y, r.w, r.h), 1.5, '#fff');
   const L = Math.min(22 * d, r.w / 3, r.h / 3);
@@ -971,17 +1066,15 @@ function paintCrop(ph) {
   c.restore();
 }
 
-/* histogram of what is on screen */
+/* histogram of what is on screen (shown with the extra controls) */
 const histC = $('#hist'), hctx = histC.getContext('2d');
 function drawHist() {
+  if (!outData) return;
   const d = outData.data, R = new Uint32Array(256), G = new Uint32Array(256), B = new Uint32Array(256);
-  let n = 0, hi = 0, lo = 0;
-  for (let i = 0; i < d.length; i += 16) { const r = d[i], g = d[i + 1], b = d[i + 2]; R[r]++; G[g]++; B[b]++; n++; if (r > 252 || g > 252 || b > 252) hi++; if (r < 3 && g < 3 && b < 3) lo++; }
+  for (let i = 0; i < d.length; i += 16) { R[d[i]]++; G[d[i + 1]]++; B[d[i + 2]]++; }
   let mx = 1; for (let i = 4; i < 252; i++) mx = Math.max(mx, R[i], G[i], B[i]);
   const W = histC.width, H = histC.height;
   hctx.globalCompositeOperation = 'source-over'; hctx.fillStyle = '#17191a'; hctx.fillRect(0, 0, W, H);
-  hctx.strokeStyle = '#2c3031'; hctx.lineWidth = 1; hctx.beginPath();
-  for (let k = 1; k < 4; k++) { hctx.moveTo(W * k / 4 + 0.5, 0); hctx.lineTo(W * k / 4 + 0.5, H); } hctx.stroke();
   hctx.globalCompositeOperation = 'lighter';
   for (const [a, col] of [[R, '#d84c4c'], [G, '#3fae5c'], [B, '#3f7fe0']]) {
     hctx.fillStyle = col; hctx.beginPath(); hctx.moveTo(0, H);
@@ -989,157 +1082,75 @@ function drawHist() {
     hctx.lineTo(W, H); hctx.fill();
   }
   hctx.globalCompositeOperation = 'source-over';
-  const hiP = hi / n, loP = lo / n;
-  $('#clipHi').textContent = hiP > 0.004 ? `亮部溢出 ${(hiP * 100).toFixed(1)}%` : '亮部';
-  $('#clipHi').className = hiP > 0.004 ? 'hot' : '';
-  $('#clipLo').textContent = loP > 0.004 ? `暗部死黑 ${(loP * 100).toFixed(1)}%` : '暗部';
-  $('#clipLo').className = loP > 0.004 ? 'hot' : '';
 }
+$('#more').addEventListener('toggle', () => { if ($('#more').open) drawHist(); });
 
-/* ================= UI: strip, meta ================= */
+/* ================= UI ================= */
 function renderStrip() {
   const box = $('#thumbs'); box.textContent = '';
   state.photos.forEach((ph, i) => {
-    const b = el('button', { class: 'thumb', title: ph.name, 'aria-label': ph.name, 'aria-current': String(i === state.cur), onclick: () => select(i) }, ph.thumb);
-    if (ph.sample) b.append(el('span', { class: 'tag', text: '示例' }));
+    const b = el('button', { class: 'thumb', 'aria-current': String(i === state.cur), onclick: () => select(i) }, ph.thumb);
+    if (ph.sample) { b.setAttribute('data-i18n-label', 'sample'); b.setAttribute('aria-label', tr('sample')); b.append(el('span', { class: 'tag', ...I('sample') })); }
+    else { b.title = ph.name; b.setAttribute('aria-label', ph.name); }
     box.append(b);
   });
   const many = state.photos.filter((p) => !p.sample).length > 1;
   $('#btnExportAll').hidden = !many; $('#btnSync').hidden = !many;
 }
-function renderMeta() {
-  const ph = cur(), m = $('#meta'); m.textContent = ''; if (!ph) return;
-  const [ow, oh] = outDims(ph);
-  m.append(el('b', { text: ph.name }), el('span', { class: 'num', text: `　${ph.w}×${ph.h} → 成品 ${ow}×${oh}` }));
-}
 let toastT = 0;
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); if (ms) toastT = setTimeout(() => (t.hidden = true), ms); }
 
-/* ================= UI: diagnosis ================= */
-function buildFindings(ph) {
-  const an = ph.an, t = an.tone, A = ph.adjust, out = [];
-  const tone = (title, s, msg, keys) => out.push({ title, s, msg, keys });
-  if (t.exposure) tone('曝光', 'tip', `${t.exposure > 0 ? '整体偏暗' : '整体偏亮'}，中位亮度 ${pct(t.med)}，舒适区大约在 40–60%。${t.backlit ? '亮部已经很亮，属于逆光场景，所以只小幅提亮，主要靠提阴影。' : ''}`, { exposure: t.exposure });
-  else tone('曝光', 'ok', `中位亮度 ${pct(t.med)}，不用动。`, null);
-  const lv = {}; if (t.whites) lv.whites = t.whites; if (t.blacks) lv.blacks = t.blacks; if (t.contrast) lv.contrast = t.contrast;
-  if (Object.keys(lv).length) tone('层次', 'tip', `画面发灰，直方图没撑开：${t.exposure ? '校正曝光后' : ''}最暗处 ${pct(t.lo)}，最亮处 ${pct(t.hi)}。把两端拉到位，通透感就出来了。`, lv);
-  else tone('层次', 'ok', '黑白场都到位，反差正常。', null);
-  const hs = {}; if (t.highlights) hs.highlights = t.highlights; if (t.shadows) hs.shadows = t.shadows;
-  if (an.clipHi > 0.02) tone('高光', 'warn', `${(an.clipHi * 100).toFixed(1)}% 的画面已经过曝成纯白，细节找不回来了。压一点高光能让过渡自然些。`, { highlights: t.highlights || -30, ...(t.shadows ? { shadows: t.shadows } : {}) });
-  else if (Object.keys(hs).length) tone('高光与阴影', 'tip', `${t.highlights ? `接近纯白的区域占 ${pct(t.fracHi)}，压一压能找回云和浪花的细节。` : ''}${t.shadows ? `暗部占 ${pct(t.fracLo)}，提一点能看清里面的东西。` : ''}`, hs);
-  /* white balance */
-  const sunset = an.hues.warm > 0.5 && t.med < 0.55;
-  if (sunset) tone('白平衡', 'ok', '暖色占主导，看起来是日出日落的氛围，保留这份暖调。', null);
-  else if (an.wbEst && (Math.abs(an.wbEst.t) > 9 || Math.abs(an.wbEst.n) > 12)) {
-    const tt = Math.round(clamp(an.wbEst.t * 0.7, -32, 32)), nn = Math.round(clamp(an.wbEst.n * 0.7, -25, 25));
-    const dir = [Math.abs(an.wbEst.t) > 9 ? (an.wbEst.t > 0 ? '偏冷发蓝' : '偏暖发黄') : '', Math.abs(an.wbEst.n) > 12 ? (an.wbEst.n > 0 ? '偏绿' : '偏洋红') : ''].filter(Boolean).join('、');
-    const k = {}; if (Math.abs(tt) >= 4) k.temp = tt; if (Math.abs(nn) >= 4) k.tint = nn;
-    tone('白平衡', 'tip', `最亮的那些区域（云、浪花、白沙）本该接近白色，现在${dir}。按七成力度校正，留一点现场感。`, k);
-  } else tone('白平衡', 'ok', an.wbEst ? '亮部接近中性，没有明显色偏。' : '画面里找不到足够的白色参照，无法判断，凭感觉微调色温即可。', null);
-  /* saturation */
-  if (an.sat < 0.2 && an.hues.chroma > 0.05) tone('色彩', 'tip', `颜色偏淡，平均饱和度 ${pct(an.sat)}。用自然饱和度而不是饱和度，它优先补淡的颜色，不容易把已经鲜艳的地方推过头。`, { vibrance: Math.round(clamp((0.3 - an.sat) * 230, 10, 36)) });
-  else if (an.sat > 0.62) tone('色彩', 'tip', `颜色已经很浓，平均饱和度 ${pct(an.sat)}，再加容易显脏，可以略收一点。`, { saturation: -10 });
-  else tone('色彩', 'ok', `平均饱和度 ${pct(an.sat)}，浓淡合适。`, null);
-  /* tone findings: applied state */
-  for (const f of out) if (f.keys) { f.applied = Object.keys(f.keys).every((k) => A[k] === f.keys[k]); f.fix = Object.keys(f.keys).map((k) => `${NAMES[k]} ${fmtParam(k, f.keys[k])}`).join('　'); f.kind = 'tone'; }
-  /* horizon */
-  const hz = an.horizon;
-  if (hz.found && Math.abs(hz.deg) >= 0.4) out.push({ title: '地平线', s: 'tip', msg: `检测到一条贯穿画面的水平线，${hz.deg > 0 ? '右边低' : '左边低'} ${Math.abs(hz.deg).toFixed(1)}°。海平面歪一点点都很显眼。`, fix: `拉直 ${signed(-hz.deg, 1)}°`, kind: 'level' });
-  else if (hz.found) out.push({ title: '地平线', s: 'ok', msg: '水平线是平的。' });
-  else out.push({ title: '地平线', s: 'ok', msg: '没找到明显的水平线，不做判断。需要的话到「裁剪」里手动拉直。' });
-  /* composition */
-  const now = scoreCrop(an, ph.crop), best = an.crops.find((c) => c.key === 'orig');
-  if (hz.found) {
-    const hy = (hz.pos - ph.crop.y) / ph.crop.h;
-    if (Math.abs(hy - 0.5) < 0.075) out.push({ title: '构图', s: 'tip', msg: '地平线正好压在画面中线，上下各一半容易显得呆板。天空精彩就把它放到下三分线，海面和前景精彩就放到上三分线。', fix: '去裁剪里看建议', kind: 'goCrop' });
+function renderFixes() {
+  const ph = cur(), box = $('#fixes'); box.textContent = '';
+  if (!ph || !ph.base) return;
+  if (!ph.base.fixes.length) { box.append(el('p', { class: 'nofix', ...I('nofix') })); return; }
+  for (const f of ph.base.fixes) {
+    box.append(el('button', { class: 'fix', role: 'switch', 'aria-checked': String(fixOn(ph, f)), onclick: () => {
+      if (f.id === 'level') ph.angle = ph.angle === f.angle ? 0 : f.angle; else ph.fix[f.id] = !ph.fix[f.id];
+      afterEdit();
+    } }, el('span', I('fx.' + f.id)), el('i')));
   }
-  if (!out.some((o) => o.title === '构图')) {
-    if (best && best.score > now.score * 1.12 && best.rect.w < 0.97) out.push({ title: '构图', s: 'tip', msg: `${an.subject.strong ? '主体没有落在三分点附近，' : ''}按规则打分，收紧一点会更好：现在 ${Math.round(now.score * 100)} 分，建议裁法 ${Math.round(best.score * 100)} 分。`, fix: '去裁剪里看建议', kind: 'goCrop' });
-    else out.push({ title: '构图', s: 'ok', msg: `按规则打 ${Math.round(now.score * 100)} 分，没有明显更好的裁法。` });
-  }
-  /* look */
-  const h = an.hues; let lk, why;
-  if (sunset) { lk = 'golden'; why = `暖色占了 ${pct(h.warm)} 的色彩，是日落气氛`; }
-  else if (h.aqua > 0.45) { if (h.warm > 0.12) { lk = 'tealorange'; why = `蓝青占 ${pct(h.aqua)}、暖色占 ${pct(h.warm)}，正好是一对互补色`; } else { lk = 'clear'; why = `海水和天空占了 ${pct(h.aqua)} 的色彩`; } }
-  else if (h.green > 0.4) { lk = 'jungle'; why = `绿色占了 ${pct(h.green)} 的色彩`; }
-  else { lk = 'film'; why = '色彩比较分散，适合统一成柔和的调子'; }
-  const L = LOOKS.find((l) => l.id === lk);
-  out.push({ title: '风格', s: ph.look === lk ? 'ok' : 'tip', msg: `${why}，试试「${L.name}」。`, fix: ph.look === lk ? null : `套用「${L.name}」`, kind: 'look', look: lk, applied: ph.look === lk });
-  return out;
 }
-function renderDiag() {
-  const ph = cur(); if (!ph || !ph.an) return;
-  const list = buildFindings(ph), box = $('#findings'); box.textContent = '';
-  const open = list.filter((f) => f.s !== 'ok' && !f.applied && (f.kind === 'tone' || f.kind === 'level'));
-  for (const f of list) {
-    const s = f.applied ? 'ok' : f.s;
-    const row = el('div', { class: 'finding', 'data-s': s }, el('span', { class: 'dot' }),
-      el('div', { class: 't' }, f.title, el('small', { text: f.applied ? '已应用' : s === 'ok' ? '没问题' : s === 'warn' ? '注意' : '建议' })));
-    if (f.kind && (f.fix || f.applied)) {
-      const label = f.kind === 'goCrop' ? '去看看' : f.applied ? '撤销' : '应用';
-      row.append(el('button', { class: 'btn sm', onclick: () => applyFinding(f) , text: label }));
-    }
-    row.append(el('p', { class: 'm', text: f.msg }));
-    if (f.fix && f.kind !== 'goCrop') row.append(el('div', { class: 'fix num', text: f.fix }));
-    box.append(row);
-  }
-  const lead = $('#diagLead'); lead.textContent = '';
-  lead.append(el('strong', { text: open.length ? `${open.length} 处可以改进` : '基础校正都到位了' }));
-  $('#btnApplyAll').hidden = !open.length;
-  $('#btnApplyAll').onclick = () => { for (const f of open) applyFinding(f, true); afterEdit(); toast('已应用全部校正，按住「看原图」对比一下'); };
-  /* palette */
-  const sw = $('#swatches'); sw.textContent = '';
-  for (const p of ph.an.pal) sw.append(el('span', { style: `flex:${p.share};background:rgb(${p.rgb.map((v) => Math.round(v)).join(',')})`, title: pct(p.share) }));
-  const h = ph.an.hues;
-  $('#paletteNote').textContent = `有色彩的部分里：蓝青 ${pct(h.aqua)}，绿 ${pct(h.green)}，暖色 ${pct(h.warm)}。主色越少，画面越干净。`;
-}
-function applyFinding(f, batch) {
-  const ph = cur();
-  if (f.kind === 'tone') for (const k in f.keys) ph.adjust[k] = f.applied ? 0 : f.keys[k];
-  else if (f.kind === 'level') { ph.angle = clamp(Math.round((ph.angle - ph.an.horizon.deg) * 10) / 10, -15, 15); }
-  else if (f.kind === 'look') { ph.look = f.applied ? 'none' : f.look; ph.lookAmt = 100; }
-  else if (f.kind === 'goCrop') { setTab('crop'); return; }
-  if (!batch) afterEdit();
-}
-function afterEdit() { syncControls(); renderDiag(); render(false); }
-
-/* ================= UI: color ================= */
 const sliderEls = {};
 function setFill(inp) {
   const min = +inp.min, max = +inp.max, v = +inp.value, p = (v - min) / (max - min) * 100, z = min < 0 ? 50 : 0;
   inp.style.setProperty('--a', Math.min(p, z) + '%'); inp.style.setProperty('--b', Math.max(p, z) + '%');
 }
+function sliderRow([k, cls, min, max], withNumber) {
+  const inp = el('input', { type: 'range', id: 's-' + k, min: min ?? -100, max: max ?? 100, step: 1, value: DEF[k], class: cls || '' });
+  const out = withNumber ? el('output', { class: 'num' }) : el('span');
+  inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value; if (withNumber) out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
+  inp.addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = DEF[k]; afterEdit(); });
+  sliderEls[k] = [inp, out, withNumber];
+  return el('div', { class: 'row' }, el('label', { for: 's-' + k, ...I('s.' + k) }), out, inp);
+}
 function buildSliders() {
-  const box = $('#sliders');
+  for (const it of BASIC) $('#basic').append(sliderRow(it, false));
   for (const g of GROUPS) {
-    const grp = el('div', { class: 'group' });
-    for (const [k, label, cls, min, max] of g.items) {
-      const inp = el('input', { type: 'range', id: 's-' + k, min: min ?? -100, max: max ?? 100, step: 1, value: DEF[k], class: cls || '' });
-      const out = el('output', { class: 'num', id: 'o-' + k });
-      inp.addEventListener('input', () => { const ph = cur(); if (!ph) return; ph.adjust[k] = +inp.value; out.textContent = fmtParam(k, +inp.value); setFill(inp); render(true); });
-      inp.addEventListener('change', () => renderDiag());
-      inp.addEventListener('dblclick', () => { const ph = cur(); ph.adjust[k] = DEF[k]; afterEdit(); });
-      sliderEls[k] = [inp, out];
-      grp.append(el('div', { class: 'row' }, el('label', { for: 's-' + k, text: label }), out, inp));
-    }
-    if (g.fold) box.append(el('details', null, el('summary', { text: g.title }), grp));
-    else { grp.prepend(el('h3', { text: g.title })); box.append(grp); }
+    const grp = el('div', { class: 'group' }, el('h3', I(g.title)));
+    for (const it of g.items) grp.append(sliderRow(it, true));
+    $('#sliders').append(grp);
   }
 }
 function syncControls() {
   const ph = cur(); if (!ph) return;
-  for (const k in sliderEls) { const [inp, out] = sliderEls[k]; inp.value = ph.adjust[k]; out.textContent = fmtParam(k, ph.adjust[k]); if (!inp.className) setFill(inp); }
-  $('#s-lookAmt').value = ph.lookAmt; $('#o-lookAmt').textContent = ph.lookAmt; setFill($('#s-lookAmt'));
+  for (const k in sliderEls) { const [inp, out, num] = sliderEls[k]; inp.value = ph.adjust[k]; if (num) out.textContent = fmtParam(k, ph.adjust[k]); if (!inp.className) setFill(inp); }
+  $('#s-lookAmt').value = ph.lookAmt; setFill($('#s-lookAmt'));
   $('#s-angle').value = ph.angle; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill($('#s-angle'));
-  for (const b of document.querySelectorAll('#aspects .chip')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.aspect));
-  for (const b of document.querySelectorAll('#looks .look')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.look));
+  for (const b of document.querySelectorAll('#looks .tile')) b.setAttribute('aria-pressed', String(b.dataset.k === ph.look));
 }
+/* styles: the suggested one comes right after Natural and carries a dot */
 const lookCanvases = {};
+for (const L of LOOKS) lookCanvases[L.id] = mk(120, 90);
 function buildLooks() {
-  const box = $('#looks');
-  for (const L of LOOKS) {
-    const c = mk(120, 90); lookCanvases[L.id] = c;
-    box.append(el('button', { class: 'look', 'data-k': L.id, 'aria-pressed': 'false', onclick: () => { const ph = cur(); ph.look = L.id; afterEdit(); } }, c, el('span', { text: L.name })));
+  const ph = cur(), box = $('#looks'); box.textContent = ''; if (!ph) return;
+  const rec = ph.base ? ph.base.look : null;
+  const order = LOOKS.slice().sort((a, b) => (a.id === 'none' ? -2 : a.id === rec ? -1 : 0) - (b.id === 'none' ? -2 : b.id === rec ? -1 : 0));
+  for (const L of order) {
+    const b = el('button', { class: 'tile fill', 'data-k': L.id, 'aria-pressed': String(ph.look === L.id), onclick: () => { const p = cur(); p.look = L.id; afterEdit(); } },
+      el('div', { class: 'pic' }, lookCanvases[L.id]), el('span', I('lk.' + L.id)));
+    if (L.id === rec) b.append(el('i', { class: 'star', text: '★', 'aria-hidden': 'true' }));
+    box.append(b);
   }
 }
 function renderLooks() {
@@ -1149,207 +1160,196 @@ function renderLooks() {
   tx.drawImage(geomC, (120 - geomC.width * s) / 2, (90 - geomC.height * s) / 2, geomC.width * s, geomC.height * s);
   const src = tx.getImageData(0, 0, 120, 90), bl = makeBlur(t);
   for (const L of LOOKS) {
-    const P = finalParams(ph, L.id, 100), out = new ImageData(120, 90);
+    const P = finalParams(ph, L.id), out = new ImageData(120, 90);
     process(src.data, out.data, 120, 90, 0, 90, P, buildLUTs(P), P.clarity ? bl : null);
     lookCanvases[L.id].getContext('2d').putImageData(out, 0, 0);
   }
 }
-
-/* ================= UI: crop ================= */
-function buildCropUI() {
-  for (const [k, label] of ASPECTS) $('#aspects').append(el('button', { class: 'chip', 'data-k': k, 'aria-pressed': 'false', text: label, onclick: () => setAspect(k) }));
-  for (const [k, label] of OVERLAYS) $('#overlays').append(el('button', { class: 'chip', 'data-k': k, 'aria-pressed': String(k === state.overlay), text: label, onclick: (e) => {
-    if (k === 'spiral' && state.overlay === 'spiral') state.spiral = (state.spiral + 1) % 4;
-    state.overlay = k;
-    for (const b of document.querySelectorAll('#overlays .chip')) b.setAttribute('aria-pressed', String(b.dataset.k === k));
-    e.currentTarget.textContent = k === 'spiral' ? '黄金螺旋 ↻' : label;
-    paint();
-  } }));
-}
-function setAspect(k) {
-  const ph = cur(); ph.aspect = k; const rN = ratioN(ph);
-  if (rN) ph.crop = fitAspect(rN, ph.crop.x + ph.crop.w / 2, ph.crop.y + ph.crop.h / 2);
-  syncControls(); render(false);
-}
-function renderSugs() {
-  const ph = cur(), box = $('#sugs'); if (!ph || !ph.an) return;
+const sameRect = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.w - b.w) + Math.abs(a.h - b.h) < 0.004;
+function renderCrops() {
+  const ph = cur(), box = $('#crops'); if (!ph) return;
   box.textContent = '';
-  if (state.tab !== 'crop') return;
+  if (state.tab !== 'crop' || !ph.an || ph.anKey !== anKeyOf(ph)) return;
   const { fw, fh } = frameDims(ph.w, ph.h, ph.angle);
-  for (const s of ph.an.crops) {
-    const ar = (s.rect.w * fw) / (s.rect.h * fh), cw = ar >= 1 ? 160 : Math.round(124 * ar), chh = ar >= 1 ? Math.round(160 / ar) : 124;
+  const list = [{ key: 'full', aspect: 'free', rect: FULL }, ...ph.an.crops];
+  for (const s of list) {
+    const ar = (s.rect.w * fw) / (s.rect.h * fh), cw = ar >= 4 / 3 ? 160 : Math.max(8, Math.round(120 * ar)), chh = ar >= 4 / 3 ? Math.max(8, Math.round(160 / ar)) : 120;
     const c = mk(cw, chh), x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
     x.drawImage(procC, s.rect.x * procC.width, s.rect.y * procC.height, s.rect.w * procC.width, s.rect.h * procC.height, 0, 0, cw, chh);
-    box.append(el('button', { class: 'sug', title: '点击采用这个裁法', onclick: () => { ph.aspect = s.key; ph.crop = { ...s.rect }; syncControls(); paint(); renderMeters(); renderMeta(); } },
-      el('div', { class: 'box' }, c), el('span', null, s.label, el('span', { class: 'num', text: ' ' + Math.round(s.score * 100) }))));
+    const label = s.key === 'full' || s.key === 'tight' ? el('span', I('cr.' + s.key)) : el('span', { text: s.key });
+    box.append(el('button', { class: 'tile', 'aria-pressed': String(sameRect(ph.crop, s.rect)), onclick: () => { ph.aspect = s.aspect; ph.crop = { ...s.rect }; paint(); renderCrops(); } },
+      el('div', { class: 'pic' }, c), label));
   }
-  $('#sugNote').textContent = ph.an.subject.strong ? '数字是规则打出的构图分。黄色虚线圈是算法认定的主体，认错了就别管它。' : '这张没有特别突出的主体（多半是大场景），建议主要看地平线位置和留白。';
 }
-function renderMeters() {
-  const ph = cur(), box = $('#meters'); if (!ph || !ph.an) return;
-  const s = scoreCrop(ph.an, ph.crop); box.textContent = '';
-  const rows = [['综合', s.score], ['主体在三分点', s.hasSubj ? s.comp : null], ['内容保留', s.keep], ['边缘干净', s.clean], ['地平线在三分线', s.hz]];
-  for (const [label, v] of rows) box.append(el('span', { text: label }), el('div', { class: 'meter' }, el('i', { style: `width:${v === null ? 0 : Math.round(v * 100)}%` })), el('span', { class: 'num', text: v === null ? '—' : String(Math.round(v * 100)) }));
-}
+function renderPanels() { renderFixes(); buildLooks(); syncControls(); renderCrops(); }
+function afterEdit() { renderFixes(); syncControls(); render(false); }
 
 /* crop dragging */
 let drag = null;
-const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+const coarse = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
 function evPos(e) { const b = view.getBoundingClientRect(); return [(e.clientX - b.left) * view.width / b.width, (e.clientY - b.top) * view.height / b.height]; }
 function cropHit(px, py) {
   const r = cropPx(cur()), t = (coarse ? 24 : 12) * dpr();
-  const dl = Math.abs(px - r.x), dr = Math.abs(px - r.x - r.w), dt = Math.abs(py - r.y), db = Math.abs(py - r.y - r.h);
-  const inX = px > r.x - t && px < r.x + r.w + t, inY = py > r.y - t && py < r.y + r.h + t;
-  let hx = 0, hy = 0;
-  if (inY && Math.min(dl, dr) < t) hx = dl < dr ? -1 : 1;
-  if (inX && Math.min(dt, db) < t) hy = dt < db ? -1 : 1;
-  if (hx || hy) return { hx, hy };
-  if (px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h) return { move: true };
-  return null;
+  const ix = Math.min(t, r.w / 4), iy = Math.min(t, r.h / 4); // keep a middle that always means "move"
+  if (px < r.x - t || px > r.x + r.w + t || py < r.y - t || py > r.y + r.h + t) return null;
+  const hx = px < r.x + ix ? -1 : px > r.x + r.w - ix ? 1 : 0, hy = py < r.y + iy ? -1 : py > r.y + r.h - iy ? 1 : 0;
+  return hx || hy ? { hx, hy } : { hx: 0, hy: 0, move: true };
 }
 view.addEventListener('pointerdown', (e) => {
-  if (state.tab !== 'crop' || !cur()) return;
-  const [px, py] = evPos(e), hit = cropHit(px, py); if (!hit) return;
-  drag = { ...hit, start: { ...cur().crop }, nx0: (px - dest.x) / dest.w, ny0: (py - dest.y) / dest.h };
-  view.setPointerCapture(e.pointerId); e.preventDefault();
+  if (state.tab !== 'crop' || !cur() || drag) return;
+  const [px, py] = evPos(e), c = cur().crop, nx = (px - dest.x) / dest.w, ny = (py - dest.y) / dest.h;
+  if (nx < 0 || nx > 1 || ny < 0 || ny > 1) { if (!cropHit(px, py)) return; }
+  const hit = cropHit(px, py) || { hx: 0, hy: 0, tapOnly: true };
+  drag = { ...hit, id: e.pointerId, start: { ...c }, nx0: nx, ny0: ny, px0: px, py0: py, moved: false,
+    ox: hit.hx < 0 ? nx - c.x : hit.hx > 0 ? nx - c.x - c.w : 0, oy: hit.hy < 0 ? ny - c.y : hit.hy > 0 ? ny - c.y - c.h : 0 };
+  try { view.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
+  e.preventDefault();
 });
 view.addEventListener('pointermove', (e) => {
   if (state.tab !== 'crop' || !cur()) return;
   const [px, py] = evPos(e);
   if (!drag) { const h = cropHit(px, py); view.style.cursor = !h ? 'default' : h.move ? 'move' : h.hx && h.hy ? (h.hx === h.hy ? 'nwse-resize' : 'nesw-resize') : h.hx ? 'ew-resize' : 'ns-resize'; return; }
-  const ph = cur(), nx = (px - dest.x) / dest.w, ny = (py - dest.y) / dest.h, c0 = drag.start, MIN = 0.06;
+  if (e.pointerId !== drag.id) return;
+  if (!drag.moved && Math.hypot(px - drag.px0, py - drag.py0) < 6 * dpr()) return;
+  drag.moved = true;
+  if (drag.tapOnly) return;
+  const ph = cur(), c0 = drag.start, MIN = 0.06;
+  const nx = (px - dest.x) / dest.w - drag.ox, ny = (py - dest.y) / dest.h - drag.oy;
   let x0 = c0.x, y0 = c0.y, x1 = c0.x + c0.w, y1 = c0.y + c0.h;
   if (drag.move) { x0 = clamp(c0.x + nx - drag.nx0, 0, 1 - c0.w); y0 = clamp(c0.y + ny - drag.ny0, 0, 1 - c0.h); x1 = x0 + c0.w; y1 = y0 + c0.h; }
   else {
     const rN = ratioN(ph), hx = drag.hx, hy = drag.hy;
     if (!rN) {
-      if (hx < 0) x0 = clamp(nx, 0, x1 - MIN); if (hx > 0) x1 = clamp(nx, x0 + MIN, 1);
-      if (hy < 0) y0 = clamp(ny, 0, y1 - MIN); if (hy > 0) y1 = clamp(ny, y0 + MIN, 1);
-    } else if (hx && hy) {
-      const ax = hx < 0 ? x1 : x0, ay = hy < 0 ? y1 : y0;
-      let w = Math.max(Math.abs(nx - ax), Math.abs(ny - ay) * rN);
-      w = Math.max(MIN, Math.min(w, hx < 0 ? ax : 1 - ax, (hy < 0 ? ay : 1 - ay) * rN)); const h = w / rN;
-      x0 = hx < 0 ? ax - w : ax; x1 = x0 + w; y0 = hy < 0 ? ay - h : ay; y1 = y0 + h;
-    } else if (hx) {
-      const ax = hx < 0 ? x1 : x0, cy = (y0 + y1) / 2;
-      let w = clamp(Math.abs(nx - ax), MIN, hx < 0 ? ax : 1 - ax), h = w / rN; const mh = 2 * Math.min(cy, 1 - cy);
-      if (h > mh) { h = mh; w = h * rN; }
-      x0 = hx < 0 ? ax - w : ax; x1 = x0 + w; y0 = cy - h / 2; y1 = cy + h / 2;
+      if (hx < 0) x0 = clamp(nx, 0, Math.max(0, x1 - MIN)); if (hx > 0) x1 = clamp(nx, Math.min(1, x0 + MIN), 1);
+      if (hy < 0) y0 = clamp(ny, 0, Math.max(0, y1 - MIN)); if (hy > 0) y1 = clamp(ny, Math.min(1, y0 + MIN), 1);
     } else {
-      const ay = hy < 0 ? y1 : y0, cx = (x0 + x1) / 2;
-      let h = clamp(Math.abs(ny - ay), MIN, hy < 0 ? ay : 1 - ay), w = h * rN; const mw = 2 * Math.min(cx, 1 - cx);
-      if (w > mw) { w = mw; h = w / rN; }
-      y0 = hy < 0 ? ay - h : ay; y1 = y0 + h; x0 = cx - w / 2; x1 = cx + w / 2;
+      /* locked shape: work in width; both sides must stay inside the frame and above the minimum */
+      const minW = MIN * Math.max(1, rN);
+      const ax = hx < 0 ? x1 : x0, ay = hy < 0 ? y1 : y0, cxm = (x0 + x1) / 2, cym = (y0 + y1) / 2;
+      let w, maxW;
+      if (hx && hy) { w = Math.max(Math.abs(nx - ax), Math.abs(ny - ay) * rN); maxW = Math.min(hx < 0 ? ax : 1 - ax, (hy < 0 ? ay : 1 - ay) * rN); }
+      else if (hx) { w = Math.abs(nx - ax); maxW = Math.min(hx < 0 ? ax : 1 - ax, 2 * Math.min(cym, 1 - cym) * rN); }
+      else { w = Math.abs(ny - ay) * rN; maxW = Math.min((hy < 0 ? ay : 1 - ay) * rN, 2 * Math.min(cxm, 1 - cxm)); }
+      w = clamp(w, Math.min(minW, maxW), maxW); const h = w / rN;
+      if (hx) { x0 = hx < 0 ? ax - w : ax; } else x0 = cxm - w / 2;
+      if (hy) { y0 = hy < 0 ? ay - h : ay; } else y0 = cym - h / 2;
+      x1 = x0 + w; y1 = y0 + h;
     }
   }
-  ph.crop = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  paint(); renderMeters(); renderMeta();
+  const w = clamp(x1 - x0, 0.01, 1), h = clamp(y1 - y0, 0.01, 1);
+  ph.crop = { x: clamp(x0, 0, 1 - w), y: clamp(y0, 0, 1 - h), w, h };
+  paint();
 });
-const endDrag = () => { if (drag) { drag = null; renderDiag(); } };
+const endDrag = (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag, ph = cur(); drag = null;
+  if (e.type === 'pointerup' && !d.moved && !d.hx && !d.hy && ph && d.nx0 >= 0 && d.nx0 <= 1 && d.ny0 >= 0 && d.ny0 <= 1) { ph.subj = { x: d.nx0, y: d.ny0 }; render(false); return; }
+  renderCrops();
+};
 view.addEventListener('pointerup', endDrag); view.addEventListener('pointercancel', endDrag);
+view.addEventListener('lostpointercapture', endDrag);
 
 /* ================= tabs & actions ================= */
+const TABS = ['fix', 'style', 'crop'];
 function setTab(t) {
-  state.tab = t;
-  for (const k of ['diag', 'color', 'crop']) { $('#tab-' + k).setAttribute('aria-selected', String(k === t)); $('#pane-' + k).hidden = k !== t; }
+  state.tab = t; drag = null;
+  for (const k of TABS) { $('#tab-' + k).setAttribute('aria-selected', String(k === t)); $('#pane-' + k).hidden = k !== t; }
   stage.classList.toggle('crop', t === 'crop'); view.style.cursor = 'default';
-  if (t === 'diag') renderDiag();
   render(false);
 }
-for (const k of ['diag', 'color', 'crop']) $('#tab-' + k).addEventListener('click', () => setTab(k));
+for (const k of TABS) $('#tab-' + k).addEventListener('click', () => setTab(k));
 
-$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); ph.lookAmt = +e.target.value; $('#o-lookAmt').textContent = ph.lookAmt; setFill(e.target); render(true); });
-$('#s-angle').addEventListener('input', (e) => { const ph = cur(); ph.angle = +e.target.value; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill(e.target); render(true); });
-$('#s-angle').addEventListener('dblclick', () => { cur().angle = 0; afterEdit(); });
-$('#btnLevel').addEventListener('click', () => {
-  const ph = cur(); if (!ph.an) return;
-  if (!ph.an.horizon.found) return toast('没找到明显的水平线，请手动拖动「拉直」');
-  if (Math.abs(ph.an.horizon.deg) < 0.4) return toast('已经是平的了');
-  ph.angle = clamp(Math.round((ph.angle - ph.an.horizon.deg) * 10) / 10, -15, 15); afterEdit();
-});
-$('#btnResetCrop').addEventListener('click', () => { const ph = cur(); ph.angle = 0; ph.crop = { ...FULL }; ph.aspect = 'free'; afterEdit(); });
-$('#btnResetColor').addEventListener('click', () => { const ph = cur(); ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = 100; afterEdit(); });
-$('#btnReset').addEventListener('click', () => { const ph = cur(); if (!ph) return; ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = 100; ph.angle = 0; ph.crop = { ...FULL }; ph.aspect = 'free'; afterEdit(); toast('已恢复原样'); });
+$('#s-lookAmt').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.lookAmt = +e.target.value; setFill(e.target); render(true); });
+$('#s-angle').addEventListener('input', (e) => { const ph = cur(); if (!ph) return; ph.angle = +e.target.value; $('#o-angle').textContent = ph.angle.toFixed(1) + '°'; setFill(e.target); render(true); });
+$('#s-angle').addEventListener('change', () => renderFixes());
+$('#s-angle').addEventListener('dblclick', () => { const ph = cur(); if (!ph) return; ph.angle = 0; afterEdit(); });
+$('#btnReset').addEventListener('click', () => { const ph = cur(); if (!ph || !ph.base) return; applyDefaults(ph); renderPanels(); render(false); });
 $('#btnSync').addEventListener('click', () => {
-  const ph = cur(); let n = 0;
-  for (const o of state.photos) if (o !== ph) { o.adjust = { ...ph.adjust }; o.look = ph.look; o.lookAmt = ph.lookAmt; n++; }
-  toast(`调色已同步到另外 ${n} 张。曝光因图而异，逐张看一眼更稳妥。`, 4000);
+  const ph = cur(); if (!ph) return; let n = 0;
+  for (const o of state.photos) if (o !== ph) { o.adjust = { ...ph.adjust }; o.look = ph.look; o.lookAmt = ph.lookAmt; gradeThumb(o); n++; }
+  toast(tr('t.synced', { n }), 3000);
 });
-const setCompare = (v) => { if (state.compare !== v) { state.compare = v; paint(); } };
 const cmp = $('#btnCompare');
-cmp.addEventListener('pointerdown', (e) => { cmp.setPointerCapture(e.pointerId); setCompare(true); });
-for (const ev of ['pointerup', 'pointercancel', 'blur']) cmp.addEventListener(ev, () => setCompare(false));
-cmp.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') setCompare(true); });
+const setCompare = (v) => { if (state.compare !== v) { state.compare = v; cmp.classList.toggle('on', v); paint(); } };
+cmp.addEventListener('pointerdown', (e) => { try { cmp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } setCompare(true); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) cmp.addEventListener(ev, () => setCompare(false));
+cmp.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setCompare(true); } });
 cmp.addEventListener('keyup', () => setCompare(false));
 cmp.addEventListener('contextmenu', (e) => e.preventDefault());
-window.addEventListener('keydown', (e) => { if (e.key === '\\' && !e.repeat) setCompare(true); });
-window.addEventListener('keyup', (e) => { if (e.key === '\\') setCompare(false); });
+window.addEventListener('blur', () => setCompare(false));
+
+$('#btnLang').addEventListener('click', () => { lang = lang === 'zh' ? 'en' : 'zh'; store.set('sl-lang', lang); applyLang(); });
 
 /* files in */
 $('#file').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+const hasFiles = (e) => !!(e.dataTransfer && [...e.dataTransfer.types].includes('Files'));
 let dragDepth = 0;
-window.addEventListener('dragenter', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { dragDepth++; $('#drop').hidden = false; e.preventDefault(); } });
-window.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
-window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#drop').hidden = true; });
-window.addEventListener('drop', (e) => { dragDepth = 0; $('#drop').hidden = true; if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
+window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragDepth++; $('#drop').hidden = false; e.preventDefault(); } });
+window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', (e) => { if (hasFiles(e)) { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#drop').hidden = true; } });
+window.addEventListener('drop', (e) => { dragDepth = 0; $('#drop').hidden = true; if (hasFiles(e)) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
 window.addEventListener('paste', (e) => { if (e.clipboardData && e.clipboardData.files.length) addFiles(e.clipboardData.files); });
 
-/* ================= export ================= */
+/* ================= saving ================= */
 const dlP = window.claude && window.claude.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
 async function renderFull(ph, onProg) {
   const img = ph.sample ? ph.proxy : await decode(ph.file);
-  const iw = imgW(img), ih = imgH(img), { fw, fh } = frameDims(iw, ih, ph.angle);
-  let ow = Math.max(1, Math.round(ph.crop.w * fw)), oh = Math.max(1, Math.round(ph.crop.h * fh));
-  if (ow * oh > 16e6) { const k = Math.sqrt(16e6 / (ow * oh)); ow = Math.floor(ow * k); oh = Math.floor(oh * k); }
+  const iw = imgW(img), ih = imgH(img), [ow, oh] = outSize(iw, ih, ph.angle, ph.crop);
   const c = mk(ow, oh), x = c.getContext('2d', { willReadFrequently: true });
-  drawGeom(x, img, iw, ih, ph.angle, ph.crop, ow);
+  drawGeom(x, img, iw, ih, ph.angle, ph.crop, ow, oh);
   if (img.close) img.close();
   const P = finalParams(ph), L = buildLUTs(P), blur = P.clarity ? makeBlur(c) : null;
-  const rows = Math.max(16, Math.floor(1.5e6 / ow));
+  const rows = Math.max(16, Math.floor(1.5e6 / ow)); let last = performance.now();
   for (let y = 0; y < oh; y += rows) {
     const hh = Math.min(rows, oh - y), id = x.getImageData(0, y, ow, hh);
     process(id.data, id.data, ow, hh, y, oh, P, L, blur);
-    x.putImageData(id, 0, y); if (onProg) onProg((y + hh) / oh); await tick();
+    x.putImageData(id, 0, y); if (onProg) onProg((y + hh) / oh);
+    if (performance.now() - last > 40) { await tick(); last = performance.now(); }
   }
   const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.92));
   c.width = c.height = 1;
   if (!blob) throw new Error('encode failed');
   return blob;
 }
-const outName = (ph) => ph.sample ? 'sample-secondlook.jpg' : (ph.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '_') || 'photo') + '-secondlook.jpg';
+const outName = (ph) => (ph.sample ? 'sample' : ph.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '_') || 'photo') + '-secondlook.jpg';
 async function saveBlob(blob, filename) {
   const dl = await dlP;
   if (dl) {
-    try { await dl.save({ filename, data: blob }); toast('已保存 ' + filename, 3000); return; }
-    catch (e) { if (e && (e.code === 'declined' || e.code === 'rate_limited')) { toast(e.code === 'declined' ? '已取消保存' : '保存太频繁，稍等再试'); return; } }
+    try { await dl.save({ filename, data: blob }); toast(tr('t.saved'), 3000); return; }
+    catch (e) { if (e && (e.code === 'declined' || e.code === 'rate_limited')) { toast(tr(e.code === 'declined' ? 't.cancel' : 't.wait')); return; } }
   }
   const url = URL.createObjectURL(blob);
   if (!window.claude) {
     const a = el('a', { href: url, download: filename }); document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000); toast('已导出 ' + filename, 3000); return;
+    setTimeout(() => URL.revokeObjectURL(url), 30000); toast(tr('t.saved'), 3000); return;
   }
-  if (/\.zip$/.test(filename)) { toast('这个窗口不能保存压缩包，请逐张导出', 4000); return; }
+  if (/\.zip$/.test(filename)) { URL.revokeObjectURL(url); toast(tr('t.zip'), 4000); return; }
   $('#sheetImg').src = url; $('#sheet').hidden = false;
 }
 $('#sheetClose').addEventListener('click', () => { $('#sheet').hidden = true; URL.revokeObjectURL($('#sheetImg').src); $('#sheetImg').removeAttribute('src'); });
 let busy = false;
-function setBusy(v) { busy = v; $('#btnExport').disabled = v; $('#btnExportAll').disabled = v; if (!v) { $('#btnExport').textContent = '导出 JPEG'; $('#btnExportAll').textContent = '打包导出全部'; } }
+function setBusy(v) { busy = v; $('#btnExport').disabled = v; $('#btnExportAll').disabled = v; if (!v) { $('#btnExport').textContent = tr('save'); $('#btnExportAll').textContent = tr('saveAll'); } }
 $('#btnExport').addEventListener('click', async () => {
   const ph = cur(); if (!ph || busy) return; setBusy(true);
-  try { const blob = await renderFull(ph, (p) => ($('#btnExport').textContent = `处理中 ${Math.round(p * 100)}%`)); setBusy(false); await saveBlob(blob, outName(ph)); }
-  catch (e) { toast('导出失败：这张照片可能太大，浏览器内存不够', 5000); }
+  let blob = null;
+  try { blob = await renderFull(ph, (p) => ($('#btnExport').textContent = tr('busy', { p: Math.round(p * 100) }))); } catch (e) { toast(tr('t.fail'), 5000); }
   setBusy(false);
+  if (blob) await saveBlob(blob, outName(ph));
 });
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
 function zipStore(files) { /* [{name, bytes}] → Blob, stored without compression (JPEG is already compressed) */
-  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const enc = new TextEncoder(), parts = [], central = [], now = new Date(); let off = 0;
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((Math.max(1980, now.getFullYear()) - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   for (const f of files) {
     const nm = enc.encode(f.name), crc = crc32(f.bytes), n = f.bytes.length;
     const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true);
     lh.setUint32(14, crc, true); lh.setUint32(18, n, true); lh.setUint32(22, n, true); lh.setUint16(26, nm.length, true);
     parts.push(lh, nm, f.bytes);
     const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true);
     ch.setUint32(16, crc, true); ch.setUint32(20, n, true); ch.setUint32(24, n, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
     central.push(ch, nm); off += 30 + nm.length + n;
   }
@@ -1361,7 +1361,7 @@ $('#btnExportAll').addEventListener('click', async () => {
   if (busy) return; setBusy(true);
   const list = state.photos.filter((p) => !p.sample), files = [], names = new Set(); let failed = 0;
   for (let i = 0; i < list.length; i++) {
-    $('#btnExportAll').textContent = `处理中 ${i + 1} / ${list.length}`;
+    $('#btnExportAll').textContent = tr('busyN', { i: i + 1, n: list.length });
     try {
       const blob = await renderFull(list[i]); let name = outName(list[i]), k = 2;
       while (names.has(name)) name = outName(list[i]).replace(/\.jpg$/, `-${k++}.jpg`);
@@ -1369,21 +1369,21 @@ $('#btnExportAll').addEventListener('click', async () => {
     } catch (e) { failed++; }
   }
   setBusy(false);
-  if (!files.length) return toast('导出失败', 4000);
+  if (!files.length) return toast(tr('t.fail'), 4000);
   await saveBlob(zipStore(files), 'second-look-photos.zip');
-  if (failed) toast(`${failed} 张处理失败，其余已打包`, 5000);
+  if (failed) toast(tr('t.partial', { n: failed }), 5000);
 });
 
 /* ================= boot ================= */
-buildSliders(); buildLooks(); buildCropUI();
+buildSliders(); applyLang(); paintThemeBtn();
 new ResizeObserver(() => {
   const b = stage.getBoundingClientRect(), w = Math.round(b.width * dpr()), h = Math.round(b.height * dpr());
   if (w < 4 || h < 4 || (w === view.width && h === view.height)) return;
   view.width = w; view.height = h; geomKey = ''; render(false);
 }).observe(stage);
 {
-  const ph = newPhoto('示例：海滩（程序绘制，故意拍歪拍暗）'); ph.sample = true;
-  ph.proxy = makeSample(); ph.w = ph.proxy.width; ph.h = ph.proxy.height; drawThumb(ph, ph.proxy);
+  const ph = newPhoto('sample'); ph.sample = true;
+  ph.proxy = makeSample(); ph.w = ph.proxy.width; ph.h = ph.proxy.height;
   state.photos.push(ph); select(0);
 }
 })();
