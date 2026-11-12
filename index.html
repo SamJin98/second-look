@@ -7,7 +7,7 @@
 <title>Second Look</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
 /* Layout: photo on a neutral gray surround (so color judgments stay honest); on the right the scope,
@@ -327,7 +327,7 @@ const STR = {
     'm.dark': '整体偏暗，中位亮度 {m}，舒适区约 40–60%。', 'm.bright': '整体偏亮，中位亮度 {m}，舒适区约 40–60%。',
     'm.highkey': '没有过曝，雾、雪、白墙这类亮调多半是有意的，所以默认不压暗。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
     'm.expOk': '中位亮度 {m}，不用动。',
-    'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。',
+    'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。', 'm.flatMid': '黑白场到位，但中间调挤在一起，加一点对比度拉开。',
     'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以默认不压。',
     'm.shadows': '暗部占 {f}，提一点看清细节。', 'm.backlit2': '逆光，把暗处提亮。',
     'm.cast': '最亮的区域本该是白色，现在{dir}，按七成校正。', 'm.warmMood': '偏色不重，轻微的暖调常常是氛围，所以默认不改。',
@@ -368,7 +368,7 @@ const STR = {
     'm.dark': 'Dark overall: median brightness {m}; about 40–60% is comfortable.', 'm.bright': 'Bright overall: median brightness {m}; about 40–60% is comfortable.',
     'm.highkey': ' Nothing is blown out, and fog, snow or white walls are usually meant to be bright, so this is off by default.', 'm.night': ' Looks like a night scene, so it is only lifted a little.', 'm.backlit': ' The highlights are already bright (backlit), so it is only lifted a little.',
     'm.expOk': 'Median brightness {m}. Nothing to change.',
-    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Both ends are stretched.', 'm.levelsOk': 'Black and white points are in place.',
+    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Both ends are stretched.', 'm.levelsOk': 'Black and white points are in place.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
     'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulled back for detail.', 'm.keyHi': ' The whole scene is bright on purpose, so this is off by default.',
     'm.shadows': '{f} of the frame is very dark; lifted for detail.', 'm.backlit2': 'Backlit: the dark areas are lifted.',
     'm.cast': 'The brightest areas should be white but look {dir}. Corrected by 70%.', 'm.warmMood': ' The cast is mild, and a slightly warm tone is often the mood, so this is off by default.',
@@ -483,9 +483,10 @@ function wbGains(P) {
   return [r / m, g / m, b / m];
 }
 function toneCurve(i, P, gain) {
-  const g = gain * Math.pow(2, P.exposure / 50);
-  const l0 = LIN[i];
-  const l = g >= 1 ? 1 - Math.pow(1 - l0, g) : l0 * g; // brighten with a soft shoulder, darken linearly
+  const ev = Math.pow(2, P.exposure / 50), g = gain * Math.max(ev, 1);
+  let l0 = LIN[i];
+  if (ev < 1) l0 = ev * l0 / (1 - (1 - ev) * l0); // darkening pulls the midtones down but leaves white white
+  const l = g >= 1 ? 1 - Math.pow(1 - l0, g) : l0 * g; // brightening keeps a soft shoulder
   let x = toSrgb(l);
   const bp = -clamp(P.blacks, -100, 100) / 100 * 0.12, wp = 1 - clamp(P.whites, -100, 100) / 100 * 0.22;
   x = clamp((x - bp) / (wp - bp), 0, 1);
@@ -667,7 +668,9 @@ function detectHorizon(lum, W, H) {
   const sorted = scores.slice().sort((a, b) => a - b), med = sorted[sorted.length >> 1];
   const pos = (cy + bestRho / Math.cos(deg * Math.PI / 180)) / (H - 1);
   /* an edge at the very limit of the search range is not a horizon we can trust */
-  return { found: conf > 1.1 && best > med * 1.25 && pos > 0.08 && pos < 0.92 && Math.abs(deg) < 11.5, deg, pos, conf };
+  const tb = (-12 + bestI * 0.25) * Math.PI / 180, cB = Math.cos(tb), sB = Math.sin(tb), cols = new Uint8Array(W); let span = 0;
+  for (let j = 0; j < n; j++) if (Math.abs(ys[j] * cB - xs[j] * sB - bestRho) <= 2) { const x = Math.round(xs[j] + cx); if (!cols[x]) { cols[x] = 1; span++; } }
+  return { found: conf > 1.1 && best > med * 1.25 && pos > 0.08 && pos < 0.92 && Math.abs(deg) < 11.5 && span >= W * 0.55, deg, pos, conf, span: span / W };
 }
 
 function integral(a, W, H) {
@@ -766,14 +769,15 @@ function analyze(ph) {
   const c = mk(W, H), cx = c.getContext('2d', { willReadFrequently: true });
   drawGeom(cx, src, src.width, src.height, ph.angle, FULL, W, H);
   const d = cx.getImageData(0, 0, W, H).data, n = W * H;
-  const lum = new Float32Array(n), hist = new Float64Array(256);
+  const lum = new Float32Array(n), hist = new Float64Array(256), histMx = new Float64Array(256);
   let clipHi = 0, satSum = 0, satN = 0, chroN = 0, fAqua = 0, fGreen = 0, fWarm = 0, chroTot = 0, nN = 0, nR = 0, nG = 0, nB = 0;
   const hw = new Float64Array(36), hc = new Float64Array(36), hr = new Float64Array(36), hg = new Float64Array(36), hb = new Float64Array(36);
   for (let i = 0, j = 0; j < n; i += 4, j++) {
     const r = d[i], g = d[i + 1], b = d[i + 2], Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     lum[j] = Y; hist[Math.min(255, Y | 0)]++;
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), ch = mx - mn;
-    if (mx >= 252) clipHi++;
+    if (mn >= 250) clipHi++;
+    histMx[mx]++;
     if (Y > 25 && Y < 242) { satSum += mx ? ch / mx : 0; satN++; }
     if (ch > 26) {
       let hh = mx === r ? (g - b) / ch : mx === g ? (b - r) / ch + 2 : (r - g) / ch + 4; hh *= 60; if (hh < 0) hh += 360;
@@ -782,7 +786,7 @@ function analyze(ph) {
       if (hh >= 160 && hh < 262) fAqua += ch; else if (hh >= 65 && hh < 160) fGreen += ch; else if (hh < 62 || hh >= 335) fWarm += ch;
     } else { nN++; nR += r; nG += g; nB += b; }
   }
-  const p = {}; for (const [k, q] of [['p005', 0.005], ['p10', 0.1], ['p50', 0.5], ['p90', 0.9], ['p95', 0.95], ['p995', 0.995]]) p[k] = percentile(hist, n, q);
+  const p = { pMx: percentile(histMx, n, 0.995) }; for (const [k, q] of [['p005', 0.005], ['p10', 0.1], ['p50', 0.5], ['p90', 0.9], ['p95', 0.95], ['p995', 0.995]]) p[k] = percentile(hist, n, q);
   /* white point: average of the brightest, not-too-colorful, unclipped pixels */
   let wr = 0, wg = 0, wb = 0, wn = 0; const yT = Math.max(p.p95, 100);
   for (let i = 0, j = 0; j < n; i += 4, j++) {
@@ -866,18 +870,19 @@ function suggestTone(an) {
   if (flat) return f;
   let target = med;
   if (med < 0.4) target = med + (0.45 - med) * (backlit ? 0.4 : 0.85);
-  else if (med > 0.6) target = med - (med - 0.55) * 0.8;
+  else if (med > 0.6) target = med - (med - 0.6) * 0.5;
   if (target !== med) {
-    let be = 0, bd = 9;
-    for (let e = -75; e <= 75; e++) { P.exposure = e; const dd = Math.abs(toneCurve(p.p50, P, 1) - target); if (dd < bd) { bd = dd; be = e; } }
+    const dir = target > med ? 1 : -1; let be = 0, bd = Math.abs(med - target);
+    for (let k = 1; k <= 75; k++) { P.exposure = dir * k; const dd = Math.abs(toneCurve(p.p50, P, 1) - target); if (dd < bd - 1e-6) { bd = dd; be = dir * k; } }
     if (night) be = Math.min(be, 15); // a night scene should stay night
+    be = Math.max(be, -40);           // and a bright one is only eased down
     P.exposure = Math.abs(be) >= 5 ? be : 0;
     if (P.exposure) f.exposure = P.exposure;
     /* fog, snow and white walls are meant to be bright: only darken by default when parts are really blown out */
     if (P.exposure < 0 && an.clipHi <= 0.03) { f.optional = true; P.exposure = 0; }
   }
   let L = lut();
-  const hi = L[p.p995], lo = L[p.p005];
+  const hi = L[Math.max(p.p995, p.pMx)], lo = L[p.p005];
   f.lo = lo; f.hi = hi;
   if (hi < 0.94 && !night) { const wp = hi / 0.97; f.whites = Math.round(clamp((1 - wp) / 0.22 * 100, 0, 70)); if (f.whites < 5) delete f.whites; }
   /* a lifted black point alone (whites already in place) may be a deliberate faded look: correct it only partly */
@@ -1232,7 +1237,7 @@ function buildFindings(ph) {
   if (f) out.push({ title: 'f.exposure', fix: f, msg: tr(f.id === 'brighten' ? 'm.dark' : 'm.bright', { m: pct(t.med) }) + (t.optional ? tr('m.highkey') : t.night ? tr('m.night') : t.backlit ? tr('m.backlit') : '') });
   else out.push({ title: 'f.exposure', msg: tr('m.expOk', { m: pct(t.med) }) });
   f = F('haze');
-  out.push(f ? { title: 'f.levels', fix: f, msg: tr('m.haze', { lo: pct(t.lo), hi: pct(t.hi) }) } : { title: 'f.levels', msg: tr('m.levelsOk') });
+  out.push(f ? { title: 'f.levels', fix: f, msg: f.p.whites || f.p.blacks ? tr('m.haze', { lo: pct(t.lo), hi: pct(t.hi) }) : tr('m.flatMid') } : { title: 'f.levels', msg: tr('m.levelsOk') });
   f = F('highlights');
   if (f) out.push({ title: 'f.highlights', fix: f, warn: m.clipHi > 0.02, msg: m.clipHi > 0.02 ? tr('m.clipped', { c: (m.clipHi * 100).toFixed(1) + '%' }) : tr('m.bright2', { f: pct(t.fracHi) }) + (f.on ? '' : tr('m.keyHi')) });
   f = F('shadows');
@@ -1566,7 +1571,9 @@ function zipStore(files) { /* [{name, bytes}] → Blob, stored without compressi
   return new Blob([...parts, ...central, end], { type: 'application/zip' });
 }
 $('#btnExportAll').addEventListener('click', async () => {
-  if (busy) return; setBusy(true);
+  if (busy) return;
+  if (window.claude && !(await dlP)) return toast(tr('t.zip'), 4000);
+  setBusy(true);
   const list = state.photos.filter((p) => !p.sample), files = [], names = new Set(); let failed = 0;
   for (let i = 0; i < list.length; i++) {
     $('#btnExportAll').textContent = tr('busyN', { i: i + 1, n: list.length });
@@ -1587,7 +1594,9 @@ buildSliders(); buildCropUI(); applyLang(); paintThemeBtn();
 new ResizeObserver(() => {
   const b = stage.getBoundingClientRect(), w = Math.round(b.width * dpr()), h = Math.round(b.height * dpr());
   if (w < 4 || h < 4 || (w === view.width && h === view.height)) return;
-  view.width = w; view.height = h; geomKey = ''; render(false);
+  view.width = w; view.height = h; geomKey = '';
+  const ph = cur(); if (ph && ph.proxy) { ensureGeom(true); renderColor(); paint(); } // sizing a canvas clears it
+  render(false);
 }).observe(stage);
 {
   const ph = newPhoto('sample'); ph.sample = true;
