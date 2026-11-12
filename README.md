@@ -5,14 +5,14 @@ A second opinion on your photos, for people who do not know how to grade or crop
 
 - **Front end only / 纯前端**: one `index.html`, no backend, no model.
 - **Nothing is uploaded / 不上传**: photos are processed in the browser with Canvas.
-- **Rule based / 基于规则**: every fix comes from a fixed rule and has its own switch.
+- **Rule based / 基于规则**: every suggestion comes from a fixed rule and has its own switch.
 - 中文 / English, day / night.
 
 ## How it works
 
 A histogram sits on top of three tabs.
 
-1. **Diagnose**: what was measured, one line on why, and a switch for each fix. Obvious faults are corrected as soon as a photo loads; turning a switch off shows what it did.
+1. **Diagnose**: what was measured, one line on why, and a switch for each fix. Nothing changes until you ask: press Fix all, or flip the switches one at a time.
 2. **Color**: nine looks rendered on your own photo, then the full set of sliders.
 3. **Crop**: shapes, straighten, six composition guides, suggested crops as pictures, and a live score for the current framing. Tap the photo to mark the subject.
 

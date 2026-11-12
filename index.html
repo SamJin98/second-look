@@ -249,9 +249,10 @@ details .group { margin-top: 8px; }
     </div>
 
     <div class="pane" id="pane-diag" role="tabpanel" aria-labelledby="tab-diag">
-      <div class="lead"><strong id="diagLead"></strong><button class="btn sm" id="btnReset" data-i18n="reset">Reset</button></div>
+      <div class="lead"><strong id="diagLead"></strong><button class="btn sm primary" id="btnFixAll" hidden>Fix all</button></div>
       <div class="findings" id="findings"></div>
       <div class="group"><h3 data-i18n="h.palette">Palette</h3><div class="swatches" id="swatches"></div><p class="hint" id="paletteNote"></p></div>
+      <div class="foot"><button class="btn sm" id="btnFixEvery" data-i18n="fixEvery" hidden>Fix every photo</button><button class="btn sm" id="btnReset" data-i18n="reset">Reset</button></div>
     </div>
 
     <div class="pane" id="pane-color" role="tabpanel" aria-labelledby="tab-color" hidden>
@@ -321,20 +322,20 @@ const STR = {
     reset: '重置这张', resetColor: '重置调色', resetCrop: '重置裁剪', autoLevel: '自动摆正', strength: '风格强度', applyAll: '把调色用到全部照片', close: '关闭', go: '去看看',
     'h.palette': '画面主色', 'h.style': '风格', 'h.ratio': '比例', 'h.guides': '构图参考线', 'h.crops': '建议裁剪', 'h.now': '当前构图',
     'hint.subject': '黄色虚线框是算出来的主体，认错了就点一下照片上真正的主体。',
-    'lead.n': '已自动修正 {n} 处', 'lead.none': '没有自动修正',
-    'tag.fixed': '已修正', 'tag.off': '未采用', 'tag.ok': '没问题', 'tag.tip': '建议', 'tag.on': '已套用',
+    'lead.todo': '发现 {n} 处可以改进', 'lead.n': '已修正 {n} 处', 'lead.none': '不用修正', fixAll: '一键修正', undoAll: '全部撤销', fixEvery: '全部照片一键修正', 't.fixedN': '已修正 {n} 张',
+    'tag.fixed': '已修正', 'tag.opt': '可选', 'tag.ok': '没问题', 'tag.tip': '建议', 'tag.on': '已套用',
     'f.exposure': '曝光', 'f.levels': '层次', 'f.highlights': '高光', 'f.shadows': '阴影', 'f.wb': '白平衡', 'f.color': '色彩', 'f.horizon': '地平线', 'f.comp': '构图', 'f.style': '风格',
     'm.dark': '整体偏暗，中位亮度 {m}，舒适区约 40–60%。', 'm.bright': '整体偏亮，中位亮度 {m}，舒适区约 40–60%。',
-    'm.highkey': '没有过曝，雾、雪、白墙这类亮调多半是有意的，所以默认不压暗。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
+    'm.highkey': '没有过曝，雾、雪、白墙这类亮调多半是有意的，所以一键修正不包含它。', 'm.night': '像夜景，只小幅提亮。', 'm.backlit': '亮部已经很亮，是逆光，只小幅提亮。',
     'm.expOk': '中位亮度 {m}，不用动。',
     'm.haze': '画面发灰：最暗处 {lo}，最亮处 {hi}，把两端拉开。', 'm.levelsOk': '黑白场都到位。', 'm.flatMid': '黑白场到位，但中间调挤在一起，加一点对比度拉开。',
-    'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以默认不压。',
+    'm.clipped': '{c} 的画面已过曝成纯白，细节找不回，压高光让过渡自然些。', 'm.bright2': '接近纯白的区域占 {f}，压一点找回细节。', 'm.keyHi': '画面整体是亮调，所以一键修正不包含它。',
     'm.shadows': '暗部占 {f}，提一点看清细节。', 'm.backlit2': '逆光，把暗处提亮。',
-    'm.cast': '最亮的区域本该是白色，现在{dir}，按七成校正。', 'm.warmMood': '偏色不重，轻微的暖调常常是氛围，所以默认不改。',
+    'm.cast': '最亮的区域本该是白色，现在{dir}，按七成校正。', 'm.warmMood': '偏色不重，轻微的暖调常常是氛围，所以一键修正不包含它。',
     'd.castBlue': '偏蓝', 'd.castYellow': '偏黄', 'd.castGreen': '偏绿', 'd.castMagenta': '偏洋红',
     'm.sunset': '暖色占主导，像日出日落，保留暖调。', 'm.wbOk': '亮部接近中性，没有明显色偏。', 'm.wbNone': '画面里找不到白色参照，无法判断。',
     'm.pale': '颜色偏淡，平均饱和度 {s}。', 'm.heavy': '颜色已经很浓，平均饱和度 {s}，略收一点。', 'm.colorOk': '平均饱和度 {s}，浓淡合适。',
-    'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以默认不转。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
+    'm.tiltR': '水平线右边低 {d}°。', 'm.tiltL': '水平线左边低 {d}°。', 'm.tiltBig': '倾斜较大，可能是有意的，所以一键修正不包含它。', 'm.level': '水平线是平的。', 'm.noHorizon': '没找到明显的水平线。',
     'm.midHorizon': '地平线压在画面中线，上下各一半容易显得呆板，试试放到三分线。', 'm.score': '按规则打 {n} 分。',
     'm.look.sunset': '暖色占 {w}，是日落气氛', 'm.look.duo': '蓝青占 {a}、暖色占 {w}，是一对互补色', 'm.look.aqua': '天空和水占了 {a} 的色彩', 'm.look.green': '绿色占了 {g} 的色彩', 'm.look.mono': '画面几乎没有颜色', 'm.look.mixed': '色彩比较分散',
     'm.try': '，试试「{name}」。',
@@ -362,20 +363,20 @@ const STR = {
     reset: 'Reset photo', resetColor: 'Reset color', resetCrop: 'Reset crop', autoLevel: 'Level the horizon', strength: 'Style strength', applyAll: 'Apply color to all photos', close: 'Close', go: 'Open crop',
     'h.palette': 'Palette', 'h.style': 'Style', 'h.ratio': 'Shape', 'h.guides': 'Composition guides', 'h.crops': 'Suggested crops', 'h.now': 'This framing',
     'hint.subject': 'The dashed yellow box is the detected subject. If it is wrong, tap the real subject on the photo.',
-    'lead.n': '{n} fixes applied', 'lead.none': 'No automatic fixes',
-    'tag.fixed': 'fixed', 'tag.off': 'not applied', 'tag.ok': 'fine', 'tag.tip': 'suggestion', 'tag.on': 'applied',
+    'lead.todo': '{n} things to improve', 'lead.n': '{n} fixed', 'lead.none': 'Nothing to fix', fixAll: 'Fix all', undoAll: 'Undo all', fixEvery: 'Fix every photo', 't.fixedN': 'Fixed {n} photos',
+    'tag.fixed': 'fixed', 'tag.opt': 'optional', 'tag.ok': 'fine', 'tag.tip': 'suggestion', 'tag.on': 'applied',
     'f.exposure': 'Exposure', 'f.levels': 'Tonal range', 'f.highlights': 'Highlights', 'f.shadows': 'Shadows', 'f.wb': 'White balance', 'f.color': 'Color', 'f.horizon': 'Horizon', 'f.comp': 'Composition', 'f.style': 'Style',
     'm.dark': 'Dark overall: median brightness {m}; about 40–60% is comfortable.', 'm.bright': 'Bright overall: median brightness {m}; about 40–60% is comfortable.',
-    'm.highkey': ' Nothing is blown out, and fog, snow or white walls are usually meant to be bright, so this is off by default.', 'm.night': ' Looks like a night scene, so it is only lifted a little.', 'm.backlit': ' The highlights are already bright (backlit), so it is only lifted a little.',
+    'm.highkey': ' Nothing is blown out, and fog, snow or white walls are usually meant to be bright, so Fix all leaves this out.', 'm.night': ' It looks like a night scene, so the lift is small.', 'm.backlit': ' The highlights are already bright (backlit), so the lift is small.',
     'm.expOk': 'Median brightness {m}. Nothing to change.',
-    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Both ends are stretched.', 'm.levelsOk': 'Black and white points are in place.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
-    'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulled back for detail.', 'm.keyHi': ' The whole scene is bright on purpose, so this is off by default.',
-    'm.shadows': '{f} of the frame is very dark; lifted for detail.', 'm.backlit2': 'Backlit: the dark areas are lifted.',
-    'm.cast': 'The brightest areas should be white but look {dir}. Corrected by 70%.', 'm.warmMood': ' The cast is mild, and a slightly warm tone is often the mood, so this is off by default.',
+    'm.haze': 'Flat and gray: darkest {lo}, brightest {hi}. Stretching both ends clears it.', 'm.levelsOk': 'Black and white points are in place.', 'm.flatMid': 'Black and white points are fine, but the midtones are bunched together; a little contrast spreads them.',
+    'm.clipped': '{c} of the frame is blown to pure white and cannot be recovered; pulling highlights softens the edge.', 'm.bright2': '{f} of the frame is near pure white; pulling it back recovers detail.', 'm.keyHi': ' The whole scene looks bright on purpose, so Fix all leaves this out.',
+    'm.shadows': '{f} of the frame is very dark; lifting it shows detail.', 'm.backlit2': 'Backlit: lift the dark areas.',
+    'm.cast': 'The brightest areas should be white but look {dir}. The fix removes 70% of it.', 'm.warmMood': ' The cast is mild, and a slightly warm tone is often the mood, so Fix all leaves this out.',
     'd.castBlue': 'blue', 'd.castYellow': 'yellow', 'd.castGreen': 'green', 'd.castMagenta': 'magenta',
     'm.sunset': 'Warm colors dominate, like sunrise or sunset. Kept warm.', 'm.wbOk': 'Highlights are close to neutral.', 'm.wbNone': 'No white reference in the frame, so this cannot be judged.',
-    'm.pale': 'Colors are pale: mean saturation {s}.', 'm.heavy': 'Colors are already heavy: mean saturation {s}. Eased slightly.', 'm.colorOk': 'Mean saturation {s}. Fine as it is.',
-    'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so this is off by default.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
+    'm.pale': 'Colors are pale: mean saturation {s}.', 'm.heavy': 'Colors are already heavy: mean saturation {s}. Easing it slightly helps.', 'm.colorOk': 'Mean saturation {s}. Fine as it is.',
+    'm.tiltR': 'The horizon is {d}° low on the right.', 'm.tiltL': 'The horizon is {d}° low on the left.', 'm.tiltBig': ' That is a large tilt and may be deliberate, so Fix all leaves this out.', 'm.level': 'The horizon is level.', 'm.noHorizon': 'No clear horizon found.',
     'm.midHorizon': 'The horizon sits on the middle line, which tends to look static. Try it on a third.', 'm.score': 'Scores {n} by the rules.',
     'm.look.sunset': 'Warm colors make up {w}, a sunset mood', 'm.look.duo': 'Blues {a} and warm tones {w} are complementary', 'm.look.aqua': 'Sky and water make up {a} of the color', 'm.look.green': 'Green makes up {g} of the color', 'm.look.mono': 'There is almost no color', 'm.look.mixed': 'Colors are scattered',
     'm.try': '. Try "{name}".',
@@ -925,7 +926,14 @@ function makeBase(an) {
 }
 function applyDefaults(ph) {
   ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.angle = 0; ph.fix = {}; ph.subj = null;
-  for (const f of ph.base.fixes) { if (f.id === 'level') { if (f.on) ph.angle = f.angle; } else ph.fix[f.id] = f.on; }
+  for (const f of ph.base.fixes) if (f.id !== 'level') ph.fix[f.id] = false; // nothing is corrected until the user asks
+}
+/* switch on every recommended fix, or switch every fix off */
+function setFixes(ph, on) {
+  for (const f of ph.base.fixes) {
+    if (f.id === 'level') { if (on ? f.on : ph.angle === f.angle) ph.angle = on ? f.angle : 0; }
+    else if (on ? f.on : true) ph.fix[f.id] = on;
+  }
 }
 /* measure once, on the untouched photo, so later straightening or cropping does not shift the advice */
 function initPhoto(ph) {
@@ -933,7 +941,7 @@ function initPhoto(ph) {
   const an = analyze(ph);
   ph.base = makeBase(an);
   applyDefaults(ph);
-  if (ph.angle === 0) { ph.an = an; ph.anKey = anKeyOf(ph); } else { ph.an = null; ph.anKey = ''; }
+  ph.an = an; ph.anKey = anKeyOf(ph);
 }
 
 /* ================= sample ================= */
@@ -1164,7 +1172,7 @@ function renderStrip() {
     box.append(b);
   });
   const many = state.photos.filter((p) => !p.sample).length > 1;
-  $('#btnExportAll').hidden = !many; $('#btnSync').hidden = !many;
+  $('#btnExportAll').hidden = !many; $('#btnSync').hidden = !many; $('#btnFixEvery').hidden = !many;
 }
 function renderMeta() {
   const ph = cur(), m = $('#meta'); m.textContent = ''; if (!ph) return;
@@ -1205,11 +1213,11 @@ function buildFindings(ph) {
 function renderDiag() {
   const ph = cur(), box = $('#findings'); box.textContent = '';
   if (!ph || !ph.base) return;
-  let n = 0;
+  let n = 0, todo = 0;
   for (const r of buildFindings(ph)) {
     const sw = !!(r.fix || r.look), on = r.fix ? fixOn(ph, r.fix) : r.look ? ph.look === r.look : false;
-    if (r.fix && on) n++;
-    const tag = r.fix ? (on ? 'tag.fixed' : 'tag.off') : r.look ? (on ? 'tag.on' : 'tag.tip') : r.tip ? 'tag.tip' : r.go ? null : 'tag.ok';
+    if (r.fix && on) n++; else if (r.fix && r.fix.on) todo++;
+    const tag = r.fix ? (on ? 'tag.fixed' : r.fix.on ? 'tag.tip' : 'tag.opt') : r.look ? (on ? 'tag.on' : 'tag.tip') : r.tip ? 'tag.tip' : r.go ? null : 'tag.ok';
     const row = el('div', { class: 'finding', 'data-s': sw ? (on ? (r.warn ? 'warn' : 'ok') : 'tip') : r.tip ? 'tip' : 'ok' }, el('span', { class: 'dot' }),
       el('div', { class: 't' }, tr(r.title), tag ? el('small', { text: tr(tag) }) : null));
     if (sw) row.append(el('button', { class: 'sw', role: 'switch', 'aria-checked': String(on), 'aria-label': tr(r.title), onclick: () => {
@@ -1224,7 +1232,8 @@ function renderDiag() {
     if (r.fix) row.append(el('div', { class: 'fix num', text: fixText(r.fix) }));
     box.append(row);
   }
-  $('#diagLead').textContent = tr(n ? 'lead.n' : 'lead.none', { n });
+  $('#diagLead').textContent = todo ? tr('lead.todo', { n: todo }) : tr(n ? 'lead.n' : 'lead.none', { n });
+  const fa = $('#btnFixAll'); fa.hidden = !todo && !n; fa.textContent = tr(todo ? 'fixAll' : 'undoAll'); fa.classList.toggle('primary', todo > 0);
   const swb = $('#swatches'), m = ph.base.m; swb.textContent = '';
   for (const p of m.pal) swb.append(el('span', { style: `flex:${p.share};background:rgb(${p.rgb.map((v) => Math.round(v)).join(',')})`, title: pct(p.share) }));
   $('#paletteNote').textContent = tr('pal.note', { a: pct(m.hues.aqua), g: pct(m.hues.green), w: pct(m.hues.warm) });
@@ -1419,9 +1428,18 @@ $('#btnLevel').addEventListener('click', () => {
   if (ph.angle === f.angle) return toast(tr('t.level'));
   ph.angle = f.angle; afterEdit();
 });
-$('#btnResetCrop').addEventListener('click', () => { const ph = cur(); if (!ph) return; const f = levelFix(ph); ph.angle = f && f.on ? f.angle : 0; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.subj = null; afterEdit(); });
+$('#btnResetCrop').addEventListener('click', () => { const ph = cur(); if (!ph) return; const f = levelFix(ph); ph.angle = f && ph.angle === f.angle ? f.angle : 0; ph.crop = { ...FULL }; ph.aspect = 'free'; ph.subj = null; afterEdit(); });
 $('#btnResetColor').addEventListener('click', () => { const ph = cur(); if (!ph) return; ph.adjust = { ...DEF }; ph.look = 'none'; ph.lookAmt = LOOK_AMT; afterEdit(); });
 $('#btnReset').addEventListener('click', () => { const ph = cur(); if (!ph || !ph.base) return; applyDefaults(ph); renderPanels(); render(false); });
+$('#btnFixAll').addEventListener('click', () => {
+  const ph = cur(); if (!ph || !ph.base) return;
+  setFixes(ph, ph.base.fixes.some((f) => f.on && !fixOn(ph, f))); afterEdit();
+});
+$('#btnFixEvery').addEventListener('click', () => {
+  let n = 0;
+  for (const o of state.photos) if (o.base) { setFixes(o, true); if (o !== cur()) gradeThumb(o); n++; }
+  toast(tr('t.fixedN', { n }), 3000); afterEdit();
+});
 $('#btnSync').addEventListener('click', () => {
   const ph = cur(); if (!ph) return; let n = 0;
   for (const o of state.photos) if (o !== ph) { o.adjust = { ...ph.adjust }; o.look = ph.look; o.lookAmt = ph.lookAmt; gradeThumb(o); n++; }
