@@ -28,6 +28,10 @@ A histogram sits on top of three tabs.
 
 Thresholds and looks are hand-written, not tuned on a photo set. Treat them as a starting point.
 
+## Sample photo
+
+The page opens on Moraine Lake in Banff National Park: [Moraine Lake 17092005.jpg](https://commons.wikimedia.org/wiki/File:Moraine_Lake_17092005.jpg) by Gorgo, from Wikimedia Commons, released into the public domain by its author. The page darkens, flattens, cools and tilts it on purpose, so that there is something to fix; it is embedded in `index.html`.
+
 ## Limits
 
 - HEIC opens only in Safari; convert to JPEG elsewhere.
